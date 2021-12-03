@@ -15,7 +15,7 @@ from spider import Crawler, Illust
 parser = ArgumentParser()
 
 scrape_types = [
-    'iid'         # download illusts by illust id list
+    'iid',         # download illusts by illust id list
     'aid',        # download illusts by artist id list
     'tag',        # download illusts by tag name
     'rcmd',       # download illusts from recomments
@@ -103,11 +103,11 @@ def download_illusts_by_artist():
                                                     args.keep_json,
                                                     args.max_img_count,
                                                     args.min_bookmarks)
-            for i, illust in enumerate(fetcher):
+            for illust, n_crawls in enumerate(fetcher):
                 illusts.append(illust)
 
                 bk = illust.total_bookmarks / 1000
-                print(f'iid={illust.id}  bookmark={bk:.1f}k  total={i+1}')
+                print(f'iid={illust.id}  bookmark={bk:.1f}k  total={n_crawls}')
 
             if args.download:
                 crawler.multi_download(illusts, **download_types)
@@ -117,55 +117,57 @@ def download_illusts_by_tag():
     if not args.args:
         logging.error('not specified the tag name')
     else:
-        top, max_crawl = args.top.split(',')
-        top, max_crawl = int(top), int(max_crawl)
+        top, max_crawls = args.top.split(',')
+        top, max_crawls = int(top), int(max_crawls)
 
         for tag in args.args:
             illusts: List[Illust] = []
             fetcher = crawler.ifetch_tag(tag, args.earliest,
-                                         args.keep_json, args.max_img_count, args.min_bookmarks)
-            for i, illust in enumerate(fetcher):
-                if i >= max_crawl:
-                    break
-                else:
+                                         False, args.max_img_count, args.min_bookmarks)
+            for illust, n_crawls in fetcher:
+                if n_crawls < max_crawls:
                     if len(illusts) < top:
                         heapq.heappush(illusts, illust)
                     else:
                         heapq.heappushpop(illusts, illust)
 
                     bk = illust.total_bookmarks / 1000
-                    print(f'iid={illust.id}  bookmark={bk:.1f}k  total={len(illusts)}  n_crawl={i+1}')
+                    print(f'iid={illust.id}  bookmark={bk:.1f}k  total={len(illusts)}/{n_crawls}')
+                else:
+                    break
 
             if args.keep_json:
                 for illust in illusts:
                     jsonfile = crawler.dir_json_illust.joinpath(f'{illust.id}.json')
                     utils.save_jsonfile(illust, filename=jsonfile.as_posix())
+
             if args.download:
                 crawler.multi_download(illusts, **download_types)
 
 
 def download_illusts_from_recommend():
     illusts: List[Illust] = []
-    top, max_crawl = args.top.split(',')
-    top, max_crawl = int(top), int(max_crawl)
+    top, max_crawls = args.top.split(',')
+    top, max_crawls = int(top), int(max_crawls)
 
-    fetcher = crawler.ifetch_recommend(args.keep_json, args.max_img_count, args.min_bookmarks)
-    for i, illust in enumerate(fetcher):
-        if i >= max_crawl:
-            break
-        else:
+    fetcher = crawler.ifetch_recommend(False, args.max_img_count, args.min_bookmarks)
+    for illust, n_crawls in fetcher:
+        if n_crawls < max_crawls:
             if len(illusts) < top:
                 heapq.heappush(illusts, illust)
             else:
                 heapq.heappushpop(illusts, illust)
 
             bk = illust.total_bookmarks / 1000
-            print(f'iid={illust.id}  bookmark={bk:.1f}k  total={len(illusts)}  n_crawl={i+1}')
+            print(f'iid={illust.id}  bookmark={bk:.1f}k  total={len(illusts)}/{n_crawls}')
+        else:
+            break
 
     if args.keep_json:
         for illust in illusts:
             jsonfile = crawler.dir_json_illust.joinpath(f'{illust.id}.json')
             utils.save_jsonfile(illust, filename=jsonfile.as_posix())
+
     if args.download:
         crawler.multi_download(illusts, **download_types)
 
@@ -181,9 +183,10 @@ def download_illusts_by_related():
             except (TypeError, ValueError):
                 print(f'wrong illust id: {iid}')
                 continue
+
             fetcher = crawler.ifetch_related(iid, args.keep_json, args.max_img_count, args.min_bookmarks)
-            for i, illust in enumerate(fetcher):
-                illusts[illust.id] = illust
+            for i, (illust, _) in enumerate(fetcher):
+                illusts.append(illust)
 
                 bk = illust.total_bookmarks / 1000
                 print(f'iid={illust.id}  bookmark={bk:.1f}k  total={i+1}')
@@ -204,7 +207,7 @@ def download_illusts_by_id():
                 print(f'wrong illust id: {iid}')
                 continue
             else:
-                illust = crawler.fetch_illust(int(iid), args.keep_json)
+                illust = crawler.fetch_illust(iid, args.keep_json)
                 crawler.download_illust(illust, **download_types)
 
                 bk = illust.total_bookmarks / 1000

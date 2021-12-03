@@ -25,6 +25,14 @@ class Illust(JsonDict):
             return self.total_bookmarks < other.total_bookmarks
 
 
+class NeedRetry(Exception):
+    pass
+
+
+class OffsetLimit(Exception):
+    pass
+
+
 @ut.singleton
 class Crawler:
     def __init__(self,
@@ -60,36 +68,30 @@ class Crawler:
                 # NOTE: 动态增加下载目录的属性，如：`dir_json_illust`
                 setattr(self, f'dir_{key}_{value}', lv2_dir)
 
-    def need_retry(self, result):
+    def check_result(self, result):
         if 'error' in result:
             msg = result.error.message or result.error.user_message or ''
             if 'Rate Limit' in msg:
-                # 访问太频繁被限制时，主动增加延迟 20 ~ 30 秒
-                wait = random.randint(20, 30)
-                logging.error(f'Rate Limit! Retry after {wait} s.')
-                time.sleep(wait)
-                return True
+                # 访问太频繁被限制时
+                raise NeedRetry('request rate limit')
+
             elif 'Please check your Access Token' in msg:
                 # Access Token 失效，重新登录
-                logging.error('Access Token expired, re-login.')
                 self.login()
-                return True
+                raise NeedRetry('access token expired, relogin')
+
             elif 'Offset must be no more than' in msg:
-                # offset 达到上限
-                logging.warning(msg)
-                return False
+                raise OffsetLimit(msg)
+
             elif msg:
                 logging.error(msg)
-                return False
+
             else:
                 logging.error(f'ApiError: {result.error}')  # 未知错误打印到日志
-                return False
-        else:
-            return False
 
     def decorate_apis_with_retry(self):
         '''给api接口增加自动重试装饰器'''
-        wrapper = ut.retry(retry_check=self.need_retry)
+        wrapper = ut.retry(checker=self.check_result, exceptions=(NeedRetry,))
 
         self.api.auth = wrapper(self.api.auth)
         self.api.illust_detail = wrapper(self.api.illust_detail)
@@ -220,6 +222,7 @@ class Crawler:
 
     def ifetch(self, pixiv_api, keep_json=True, max_count=15, min_bookmarks=1000):
         def wrapper(**kwargs):  # 被装饰后，仅接受 kwargs 形式的参数
+            n_crawls = 0
             while True:
                 result = pixiv_api(**kwargs)
                 if not result:
@@ -230,6 +233,8 @@ class Crawler:
 
                 for il in result.illusts:
                     il = Illust(il)
+                    n_crawls += 1
+
                     if il.type != 'illust':
                         logging.debug(f"Illust({il.id}) type is {il.type}, ignore.")
                         continue
@@ -243,11 +248,12 @@ class Crawler:
                         if keep_json:
                             jsonfile = self.dir_json_illust.joinpath(f'{il.id}.json')
                             ut.save_jsonfile(il, jsonfile.as_posix())
-                        yield il
+                        yield il, n_crawls
 
                 if result.next_url:
                     kwargs = self.api.parse_qs(next_url=result.next_url)  # 构造下一步参数
-                    time.sleep(random.random() + 1)
+                    time.sleep(random.random() + random.randint(1, 3))
+                    logging.info(f'next call for {pixiv_api.__name__}(...)')
                     continue
                 else:
                     break
@@ -477,13 +483,14 @@ class Crawler:
         date = datetime.date.today().isoformat()
         while date > before:
             fetcher = self.ifetch(self.api.search_illust, keep_json, max_count, min_bookmarks)
-            for illust in fetcher(word=name, start_date=date, end_date=before):
-                yield illust
+
+            for illust, num in fetcher(word=name, start_date=date, end_date=before):
+                yield illust, num
 
             try:
                 last_date = datetime.datetime.fromisoformat(illust.create_date).date()
                 date = (last_date - datetime.timedelta(1)).isoformat()
-                logging.info(f'start_date = {date}')
+                logging.info(f'the illusts created before {date} have been checked')
             except Exception:
                 break
 

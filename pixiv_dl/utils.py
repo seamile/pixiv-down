@@ -29,30 +29,29 @@ def singleton(cls):
     return deco
 
 
-def retry(retry_check=None, exceptions=(Exception,)):
+def retry(checker=None, exceptions=(Exception,)):
     '''
-    @retry_check: 重试检查器，Callable 对象。接收被装饰函数的结果作为参数，返回 True 时进行重试
+    @checker: 结果检查器，Callable 对象。接收被装饰函数的结果作为参数，返回 True 时进行重试
     @exceptions: 指定异常发生时，自动重试
     '''
     def deco(func):
+        seconds = [5, 30, 60, 120, 300]
+
         @wraps(func)
         def wrapper(*args, **kwargs):
-            for n in range(1, 25):
+            for n in seconds:
                 try:
                     result = func(*args, **kwargs)
+                    if callable(checker):
+                        checker(result)
+                    return result
                 except exceptions as e:
                     logging.error(f"retry after {n} sec due to `{e}`.")
                     time.sleep(n)
                     continue
-                else:
-                    if callable(retry_check) and retry_check(result):
-                        logging.error("retry due to wrong result.")
-                        continue
-                    else:
-                        return result
             else:
                 _arg = params_to_str(args, kwargs)
-                logging.error(f'API Failed: {func.__name__}({_arg})')
+                logging.error(f'Retry Failed: {func.__name__}({_arg})')
         return wrapper
     return deco
 
