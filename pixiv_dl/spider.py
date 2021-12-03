@@ -81,7 +81,7 @@ class Crawler:
                 raise NeedRetry('access token expired, relogin')
 
             elif 'Offset must be no more than' in msg:
-                raise OffsetLimit(msg)
+                logging.warning(msg)
 
             elif msg:
                 logging.error(msg)
@@ -135,8 +135,8 @@ class Crawler:
             logging.info('login by password')
             result = self.api.login(self.username, self.password)
 
-        logging.info(f'access_token="{self.api.access_token}" '
-                     f'refresh_token="{self.api.refresh_token}"')
+        logging.debug(f'access_token="{self.api.access_token}" '
+                      f'refresh_token="{self.api.refresh_token}"')
 
         return result
 
@@ -222,7 +222,6 @@ class Crawler:
 
     def ifetch(self, pixiv_api, keep_json=True, max_count=15, min_bookmarks=1000):
         def wrapper(**kwargs):  # 被装饰后，仅接受 kwargs 形式的参数
-            n_crawls = 0
             while True:
                 result = pixiv_api(**kwargs)
                 if not result:
@@ -233,7 +232,6 @@ class Crawler:
 
                 for il in result.illusts:
                     il = Illust(il)
-                    n_crawls += 1
 
                     if il.type != 'illust':
                         logging.debug(f"Illust({il.id}) type is {il.type}, ignore.")
@@ -248,12 +246,13 @@ class Crawler:
                         if keep_json:
                             jsonfile = self.dir_json_illust.joinpath(f'{il.id}.json')
                             ut.save_jsonfile(il, jsonfile.as_posix())
-                        yield il, n_crawls
+                        yield il
 
                 if result.next_url:
                     kwargs = self.api.parse_qs(next_url=result.next_url)  # 构造下一步参数
                     time.sleep(random.random() + random.randint(1, 3))
-                    logging.info(f'next call for {pixiv_api.__name__}(...)')
+                    _kwargs = ut.params_to_str(kwargs=kwargs)
+                    logging.info(f'next call for {pixiv_api.__name__}({_kwargs})')
                     continue
                 else:
                     break
@@ -481,18 +480,21 @@ class Crawler:
     def ifetch_tag(self, name, before='2016-01-01', keep_json=True, max_count=15, min_bookmarks=1000):
         '''迭代获取 Tag 的 Illust'''
         date = datetime.date.today().isoformat()
+        n1 = n2 = 0
         while date > before:
             fetcher = self.ifetch(self.api.search_illust, keep_json, max_count, min_bookmarks)
+            for illust in fetcher(word=name, start_date=date, end_date=before):
+                yield illust
+                n1 += 1
 
-            for illust, num in fetcher(word=name, start_date=date, end_date=before):
-                yield illust, num
-
-            try:
+            if n1 > n2:
+                n2 = n1
                 last_date = datetime.datetime.fromisoformat(illust.create_date).date()
                 date = (last_date - datetime.timedelta(1)).isoformat()
                 logging.info(f'the illusts created before {date} have been checked')
-            except Exception:
+            else:
                 break
+        logging.info(f'the illusts created before {before} have been checked')
 
     def ifetch_recommend(self, keep_json=True, max_count=15, min_bookmarks=1000):
         '''迭代获取推荐的 Illust'''

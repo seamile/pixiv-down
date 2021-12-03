@@ -8,7 +8,7 @@ def params_to_str(args=None, kwargs=None):
     '''将参数格式化为字符串'''
     s = ''
     if args:
-        s += ', '.join(f'{a}' for a in args)
+        s += ', '.join(f'{a}' for a in sorted(args))
     if kwargs:
         if s:
             s += ', '

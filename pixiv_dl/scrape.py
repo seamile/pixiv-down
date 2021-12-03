@@ -2,13 +2,12 @@
 
 import os
 import sys
-import heapq
+
 import logging
 from argparse import ArgumentParser
 from getpass import getpass
 from typing import List
 
-import utils
 from spider import Crawler, Illust
 
 # parse args
@@ -30,11 +29,8 @@ parser.add_argument('-b', dest='min_bookmarks', default=3000, type=int,
                     help='the min bookmarks of illust. (default: %(default)s)')
 parser.add_argument('-c', dest='max_img_count', default=10, type=int,
                     help='the max img count of one illust. (default: %(default)s)')
-
-# Top K from M
-parser.add_argument('-t', dest='top', type=str, default='100,1000',
-                    help=('Top K from M, format: `k,m`. '
-                          'only voild when type is `tag` or `rcmd`. (default: `%(default)s`)'))
+parser.add_argument('-t', dest='total_crawls', default=300, type=int,
+                    help='the total illusts of crawls. (default: %(default)s)')
 
 # download options
 parser.add_argument('-p', dest='path', type=str, default='./',
@@ -103,11 +99,14 @@ def download_illusts_by_artist():
                                                     args.keep_json,
                                                     args.max_img_count,
                                                     args.min_bookmarks)
-            for illust, n_crawls in enumerate(fetcher):
+            for n_crawls, illust in enumerate(fetcher, start=1):
                 illusts.append(illust)
 
                 bk = illust.total_bookmarks / 1000
                 print(f'iid={illust.id}  bookmark={bk:.1f}k  total={n_crawls}')
+
+                if n_crawls >= args.total_crawls:
+                    break
 
             if args.download:
                 crawler.multi_download(illusts, **download_types)
@@ -117,29 +116,19 @@ def download_illusts_by_tag():
     if not args.args:
         logging.error('not specified the tag name')
     else:
-        top, max_crawls = args.top.split(',')
-        top, max_crawls = int(top), int(max_crawls)
-
         for tag in args.args:
+            print(f'scraping tag: {tag}')
             illusts: List[Illust] = []
             fetcher = crawler.ifetch_tag(tag, args.earliest,
-                                         False, args.max_img_count, args.min_bookmarks)
-            for illust, n_crawls in fetcher:
-                if n_crawls < max_crawls:
-                    if len(illusts) < top:
-                        heapq.heappush(illusts, illust)
-                    else:
-                        heapq.heappushpop(illusts, illust)
+                                         args.keep_json, args.max_img_count, args.min_bookmarks)
+            for n_crawls, illust in enumerate(fetcher, start=1):
+                illusts.append(illust)
 
-                    bk = illust.total_bookmarks / 1000
-                    print(f'iid={illust.id}  bookmark={bk:.1f}k  total={len(illusts)}/{n_crawls}')
-                else:
+                bk = illust.total_bookmarks / 1000
+                print(f'iid={illust.id}  bookmark={bk:.1f}k  total={n_crawls}')
+
+                if n_crawls >= args.total_crawls:
                     break
-
-            if args.keep_json:
-                for illust in illusts:
-                    jsonfile = crawler.dir_json_illust.joinpath(f'{illust.id}.json')
-                    utils.save_jsonfile(illust, filename=jsonfile.as_posix())
 
             if args.download:
                 crawler.multi_download(illusts, **download_types)
@@ -147,26 +136,15 @@ def download_illusts_by_tag():
 
 def download_illusts_from_recommend():
     illusts: List[Illust] = []
-    top, max_crawls = args.top.split(',')
-    top, max_crawls = int(top), int(max_crawls)
+    fetcher = crawler.ifetch_recommend(args.keep_json, args.max_img_count, args.min_bookmarks)
+    for n_crawls, illust in enumerate(fetcher, start=1):
+        illusts.append(illust)
 
-    fetcher = crawler.ifetch_recommend(False, args.max_img_count, args.min_bookmarks)
-    for illust, n_crawls in fetcher:
-        if n_crawls < max_crawls:
-            if len(illusts) < top:
-                heapq.heappush(illusts, illust)
-            else:
-                heapq.heappushpop(illusts, illust)
+        bk = illust.total_bookmarks / 1000
+        print(f'iid={illust.id}  bookmark={bk:.1f}k  total={n_crawls}')
 
-            bk = illust.total_bookmarks / 1000
-            print(f'iid={illust.id}  bookmark={bk:.1f}k  total={len(illusts)}/{n_crawls}')
-        else:
+        if n_crawls >= args.total_crawls:
             break
-
-    if args.keep_json:
-        for illust in illusts:
-            jsonfile = crawler.dir_json_illust.joinpath(f'{illust.id}.json')
-            utils.save_jsonfile(illust, filename=jsonfile.as_posix())
 
     if args.download:
         crawler.multi_download(illusts, **download_types)
@@ -185,11 +163,14 @@ def download_illusts_by_related():
                 continue
 
             fetcher = crawler.ifetch_related(iid, args.keep_json, args.max_img_count, args.min_bookmarks)
-            for i, (illust, _) in enumerate(fetcher):
+            for n_crawls, illust in enumerate(fetcher, start=1):
                 illusts.append(illust)
 
                 bk = illust.total_bookmarks / 1000
-                print(f'iid={illust.id}  bookmark={bk:.1f}k  total={i+1}')
+                print(f'iid={illust.id}  bookmark={bk:.1f}k  total={n_crawls}')
+
+                if n_crawls >= args.total_crawls:
+                    break
 
             if args.download:
                 crawler.multi_download(illusts.values(), **download_types)
@@ -200,7 +181,7 @@ def download_illusts_by_id():
         logging.error('not specified the illust id list')
     else:
         total = len(args.args)
-        for i, iid in enumerate(args.args):
+        for n_crawls, iid in enumerate(args.args, start=1):
             try:
                 iid = int(iid)
             except (TypeError, ValueError):
@@ -211,7 +192,7 @@ def download_illusts_by_id():
                 crawler.download_illust(illust, **download_types)
 
                 bk = illust.total_bookmarks / 1000
-                print(f'iid={illust.id}  bookmark={bk:.1f}k  progress: {i+1} / {total}')
+                print(f'iid={illust.id}  bookmark={bk:.1f}k  progress: {n_crawls} / {total}')
 
 
 if args.scrape_type == 'aid':
