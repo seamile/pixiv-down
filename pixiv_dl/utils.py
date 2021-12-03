@@ -1,0 +1,69 @@
+import json
+import logging
+import time
+from functools import wraps
+
+
+def params_to_str(args=None, kwargs=None):
+    '''将参数格式化为字符串'''
+    s = ''
+    if args:
+        s += ', '.join(f'{a}' for a in args)
+    if kwargs:
+        if s:
+            s += ', '
+        s += ', '.join(f'{k}={v}' for k, v in sorted(kwargs.items()))
+    return s
+
+
+def singleton(cls):
+    '''单例装饰器'''
+    instance = None
+
+    @wraps(cls)
+    def deco(*args, **kwargs):
+        nonlocal instance
+        if instance is None:
+            instance = cls(*args, **kwargs)
+        return instance
+    return deco
+
+
+def retry(retry_check=None, exceptions=(Exception,)):
+    '''
+    @retry_check: 重试检查器，Callable 对象。接收被装饰函数的结果作为参数，返回 True 时进行重试
+    @exceptions: 指定异常发生时，自动重试
+    '''
+    def deco(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            for n in range(1, 25):
+                try:
+                    result = func(*args, **kwargs)
+                except exceptions as e:
+                    logging.error(f"retry after {n} sec due to `{e}`.")
+                    time.sleep(n)
+                    continue
+                else:
+                    if callable(retry_check) and retry_check(result):
+                        logging.error("retry due to wrong result.")
+                        continue
+                    else:
+                        return result
+            else:
+                _arg = params_to_str(args, kwargs)
+                logging.error(f'API Failed: {func.__name__}({_arg})')
+        return wrapper
+    return deco
+
+
+def save_jsonfile(data, filename: str, compress=True):
+    if not filename:
+        raise ValueError('`filename` can not be null.')
+    if not filename.endswith('.json'):
+        filename = f'{filename}.json'
+    with open(filename, 'w') as fp:
+        if compress:
+            json.dump(data, fp, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+        else:
+            json.dump(data, fp, ensure_ascii=False, sort_keys=True, indent=4)
