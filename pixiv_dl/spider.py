@@ -242,6 +242,9 @@ class Crawler:
                     elif il.page_count > max_count:
                         logging.debug(f"Illust({il.id}) page_count is {il.page_count}, ignore.")
                         continue
+                    elif il.x_restrict > 0:
+                        logging.debug(f"Illust({il.id}) x_restrict is {il.x_restrict}, ignore.")
+                        continue
                     else:
                         if keep_json:
                             jsonfile = self.dir_json_illust.joinpath(f'{il.id}.json')
