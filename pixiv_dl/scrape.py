@@ -2,8 +2,9 @@
 
 import os
 import sys
-
+import signal
 import logging
+import datetime
 from argparse import ArgumentParser
 from getpass import getpass
 from typing import List
@@ -29,7 +30,7 @@ parser.add_argument('-b', dest='min_bookmarks', default=3000, type=int,
                     help='the min bookmarks of illust. (default: %(default)s)')
 parser.add_argument('-c', dest='max_img_count', default=10, type=int,
                     help='the max img count of one illust. (default: %(default)s)')
-parser.add_argument('-t', dest='total_crawls', default=300, type=int,
+parser.add_argument('-t', '-n', dest='total_crawls', default=100, type=int,
                     help='the total illusts of crawls. (default: %(default)s)')
 
 # download options
@@ -42,8 +43,12 @@ parser.add_argument('-d', dest='download', type=str,
 parser.add_argument('-k', dest='keep_json', action='store_true', help='keep json files')
 
 
-parser.add_argument('-e', dest='earliest', type=str, default='2016-01-01',
-                    help='the earliest date of illust with a tag (default: `%(default)s`)')
+# date interval
+today = datetime.date.today().isoformat()
+parser.add_argument('-s', dest='start', type=str, default=today,
+                    help='the start date of illust with a tag (default: `%(default)s`)')
+parser.add_argument('-e', dest='end', type=str, default='2016-01-01',
+                    help='the end date of illust with a tag (default: `%(default)s`)')
 
 # log level
 parser.add_argument('-l', dest='loglevel', type=str, default='warn',
@@ -83,6 +88,10 @@ user = crawler.login()
 print('Login OK!\n')
 
 
+################################################################################
+#                                  downladers                                  #
+################################################################################
+
 def download_illusts_by_artist():
     if not args.args:
         logging.error('not specified the illust id list')
@@ -119,13 +128,13 @@ def download_illusts_by_tag():
         for tag in args.args:
             print(f'scraping tag: {tag}')
             illusts: List[Illust] = []
-            fetcher = crawler.ifetch_tag(tag, args.earliest,
+            fetcher = crawler.ifetch_tag(tag, args.start, args.end,
                                          args.keep_json, args.max_img_count, args.min_bookmarks)
             for n_crawls, illust in enumerate(fetcher, start=1):
                 illusts.append(illust)
 
                 bk = illust.total_bookmarks / 1000
-                print(f'iid={illust.id}  bookmark={bk:.1f}k  total={n_crawls}')
+                print(f'iid={illust.id}  bookmark={bk:4.1f}k  total={n_crawls}')
 
                 if n_crawls >= args.total_crawls:
                     break
@@ -195,26 +204,38 @@ def download_illusts_by_id():
                 print(f'iid={illust.id}  bookmark={bk:.1f}k  progress: {n_crawls} / {total}')
 
 
-if args.scrape_type == 'aid':
-    download_illusts_by_artist()
-    print('============== artist works fetched ==============\n\n')
+def signal_hander(*_):
+    print('\nUser exit')
+    sys.exit(0)
 
-elif args.scrape_type == 'tag':
-    download_illusts_by_tag()
-    print('============== tag fetched ==============\n\n')
 
-elif args.scrape_type == 'rcmd':
-    download_illusts_from_recommend()
-    print('============== recommend fetched ==============\n\n')
+def main():
+    signal.signal(signal.SIGINT, signal_hander)
 
-elif args.scrape_type == 'related':
-    download_illusts_by_related()
-    print('============== related fetched ==============\n\n')
+    if args.scrape_type == 'aid':
+        download_illusts_by_artist()
+        print('============== artist works fetched ==============\n\n')
 
-elif args.scrape_type == 'iid':
-    # NOTE: 此模式下，会忽略 min_bookmarks，max_img_count，top，max_crawl 四个限制条件
-    download_illusts_by_id()
-    print('============== illusts fetched ==============\n\n')
-else:
-    print('wrong type')
-    sys.exit(1)
+    elif args.scrape_type == 'tag':
+        download_illusts_by_tag()
+        print('============== tag fetched ==============\n\n')
+
+    elif args.scrape_type == 'rcmd':
+        download_illusts_from_recommend()
+        print('============== recommend fetched ==============\n\n')
+
+    elif args.scrape_type == 'related':
+        download_illusts_by_related()
+        print('============== related fetched ==============\n\n')
+
+    elif args.scrape_type == 'iid':
+        # NOTE: 此模式下，会忽略 min_bookmarks，max_img_count，top，max_crawl 四个限制条件
+        download_illusts_by_id()
+        print('============== illusts fetched ==============\n\n')
+    else:
+        print('wrong type')
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()

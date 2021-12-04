@@ -234,28 +234,31 @@ class Crawler:
                     il = Illust(il)
 
                     if il.type != 'illust':
-                        logging.debug(f"Illust({il.id}) type is {il.type}, ignore.")
+                        logging.debug(f"ignore Illust({il.id}): illust_type is {il.type}")
                         continue
                     elif il.total_bookmarks < min_bookmarks:
-                        logging.debug(f"Illust({il.id}) total_bookmarks is {il.total_bookmarks}, ignore.")
+                        logging.debug(f"ignore Illust({il.id}): bookmarks is {il.total_bookmarks}")
                         continue
                     elif il.page_count > max_count:
-                        logging.debug(f"Illust({il.id}) page_count is {il.page_count}, ignore.")
+                        logging.debug(f"ignore Illust({il.id}): img_count is {il.page_count}")
                         continue
                     elif il.x_restrict > 0:
-                        logging.debug(f"Illust({il.id}) x_restrict is {il.x_restrict}, ignore.")
+                        logging.debug(f"ignore Illust({il.id}): x_restrict is {il.x_restrict}")
                         continue
                     else:
                         if keep_json:
                             jsonfile = self.dir_json_illust.joinpath(f'{il.id}.json')
                             ut.save_jsonfile(il, jsonfile.as_posix())
+                        logging.debug(f'fetched Illust({il.id})'
+                                      f'created={il.create_date[:10]}'
+                                      f'bookmark={il.total_bookmarks}')
                         yield il
 
                 if result.next_url:
                     kwargs = self.api.parse_qs(next_url=result.next_url)  # 构造下一步参数
                     time.sleep(random.random() + random.randint(1, 3))
                     _kwargs = ut.params_to_str(kwargs=kwargs)
-                    logging.info(f'next call for {pixiv_api.__name__}({_kwargs})')
+                    logging.debug(f'request next page: {pixiv_api.__name__}({_kwargs})')
                     continue
                 else:
                     break
@@ -480,24 +483,28 @@ class Crawler:
         fetcher = self.ifetch(self.api.user_illusts, keep_json, max_count, min_bookmarks)
         return fetcher(user_id=aid)
 
-    def ifetch_tag(self, name, before='2016-01-01', keep_json=True, max_count=15, min_bookmarks=1000):
+    def ifetch_tag(self, name, start: Optional[str] = None, end: Optional[str] = None,
+                   keep_json=True, max_count=15, min_bookmarks=1000):
         '''迭代获取 Tag 的 Illust'''
-        date = datetime.date.today().isoformat()
-        n1 = n2 = 0
-        while date > before:
-            fetcher = self.ifetch(self.api.search_illust, keep_json, max_count, min_bookmarks)
-            for illust in fetcher(word=name, start_date=date, end_date=before):
-                yield illust
-                n1 += 1
+        if start and end:
+            n1 = n2 = 0
+            while start > end:
+                fetcher = self.ifetch(self.api.search_illust, keep_json, max_count, min_bookmarks)
+                for illust in fetcher(word=name, start_date=start, end_date=end):
+                    yield illust
+                    n1 += 1
 
-            if n1 > n2:
-                n2 = n1
-                last_date = datetime.datetime.fromisoformat(illust.create_date).date()
-                date = (last_date - datetime.timedelta(1)).isoformat()
-                logging.info(f'the illusts created before {date} have been checked')
-            else:
-                break
-        logging.info(f'the illusts created before {before} have been checked')
+                if n1 > n2:
+                    n2 = n1
+                    last_date = datetime.datetime.fromisoformat(illust.create_date).date()
+                    start = (last_date - datetime.timedelta(1)).isoformat()
+                    logging.info(f'the illusts created before {start} have been checked')
+                else:
+                    break
+            logging.info(f'the illusts created before {end} have been checked')
+        else:
+            fetcher = self.ifetch(self.api.search_illust, keep_json, max_count, min_bookmarks)
+            return fetcher(word=name)
 
     def ifetch_recommend(self, keep_json=True, max_count=15, min_bookmarks=1000):
         '''迭代获取推荐的 Illust'''
