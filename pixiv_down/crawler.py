@@ -10,7 +10,7 @@ import requests
 from pixivpy3.aapi import AppPixivAPI
 from pixivpy3.utils import JsonDict
 
-import utils as ut
+from pixiv_down import utils as ut
 
 
 class Illust(JsonDict):
