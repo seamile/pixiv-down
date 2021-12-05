@@ -18,7 +18,7 @@ setuptools.setup(
     packages=['pixiv_down'],
     install_requires=[
         "PixivPy>=3.6.0",
-        "requests>=2.26.0",
+        "requests>=2.0",
     ],
     entry_points={
         'console_scripts': [
