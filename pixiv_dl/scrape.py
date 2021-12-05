@@ -80,7 +80,7 @@ if not os.path.isdir(args.path):
     print(f'`{args.path}` is not a directory.')
     sys.exit(1)
 else:
-    download_dir = os.path.join(args.path, 'pixiv-down')
+    download_dir = os.path.join(args.path, 'pixdown')
 
 # login
 crawler = Crawler(refresh_token=refresh_token, download_dir=download_dir)
