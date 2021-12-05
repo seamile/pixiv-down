@@ -1,64 +1,84 @@
 # Pixiv Downloader
 
+A command line pixiv illusts downloader.
+
+
 ## Install
 
 ```shell
-pip install pixiv-dl
+pip install pixiv-down
 ```
+
 
 ## Usage
 
 ```shell
-pixiv-dl [OPTIONS] download_type [other_args ...]
+usage: pixd [-h]
+            [-b MIN_BOOKMARKS] [-c MAX_PAGE_COUNT] [-n ILLUST_NUM]
+            [-k] [-p PATH] [-r RESOLUTION]
+            [-s START] [-e END]
+            [-l {debug,info,warn,error}]
+            {iid,aid,tag,rcmd,related} ...
 ```
 
-### Download Types
 
-- iid
-- aid
-- tag
-- rcmd
-- related
+### Download illusts in diffrent ways
 
-### Other Args
+- `iid`
 
-the follow args for download type, exp. e.g., `tag name` or `illust id list`.
+    download illusts by illust id list.
+    e.g., `pixd iid 92578547 93005923 87052390 91681788`
 
-### Optional Arguments:
+- `aid`
 
-* `-h, --help`
-    show help message and exit
+    download illusts by artist id list.
+    e.g., `pixd aid 671593 8062849 10475690 14496985`
 
-* `-b MIN_BOOKMARKS`
-    default is 3000
-    the min bookmarks of illust. ()
+- `tag`
 
-* `-c MAX_IMG_COUNT`
-    default is 10
-    the max img count of one illust. ()
+    download illusts by tag name.
+    e.g., `pixd tag 甘雨 刻晴 八重樱`
 
-* `-t TOTAL_CRAWLS` or `-n TOTAL_CRAWLS`
-    default is 100
-    the total illusts of crawls. ()
+- `rcmd`
 
-* `-p PATH`
-    default is `./`
-    the storage path ()
+    download illusts from recomments.
+    e.g., `pixd rcmd`
 
-* `-d DOWNLOAD`
-    download types: s/m/l/o. means that: square/middle/large/origin. can set multiple.
+- `related`
 
-* `-k`
-    keep json files
+    download related illusts of the specified illust id.
+    e.g., `pixd related 70937229 87749466`
 
-* `-s START`
-    default is `2021-12-05`
-    the start date of illust with a tag. only used for tag. ()
 
-* `-e END`
-    default is `2016-01-01`
-    the end date of illust with a tag. only used for tag. ()
+### Optional Arguments
 
-* `-l {debug,info,warn,error}`
-    default is `warn`
-    the log level ()
+- `-h, --help`
+    show this help message and exit
+
+- `-b MIN_BOOKMARKS`
+    the min bookmarks of illust (default: 3000)
+
+- `-c MAX_PAGE_COUNT`
+    the max page count of illust (default: 10)
+
+- `-n ILLUST_NUM`
+    total number of illusts to download (default: 300)
+
+- `-p PATH`
+    the storage path of illusts (default: ./)
+
+- `-r RESOLUTION`
+    the resolution of illusts: `s` / `m` / `l` / `o`,
+    i.e., square / middle / large / origin, can set multiple
+
+- `-k`
+    keep the json result to files
+
+- `-s START`
+    the start date of illust when search tag (default: today)
+
+- `-e END`
+    the end date of illust when search tag (default: `2016-01-01`)
+
+- `-l {debug,info,warn,error}`
+    the log level (default: `warn`)

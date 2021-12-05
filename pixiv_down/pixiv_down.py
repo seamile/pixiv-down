@@ -25,25 +25,25 @@ parser.add_argument(dest='download_type', choices=_download_types,
                     help='the download type: iid / aid / tag / rcmd / related')
 
 parser.add_argument(dest='args', nargs='*',
-                    help=("the positional args for download type, exp. "
-                          "e.g., `illust ids` / `artist ids` / `tag names`."))
+                    help=("the positional args for download type, "
+                          "e.g., `illust ids` / `artist ids` / `tag names`"))
 
 # bookmars and page count
 parser.add_argument('-b', dest='min_bookmarks', default=3000, type=int,
-                    help='the min bookmarks of illust. (default: %(default)s)')
+                    help='the min bookmarks of illust (default: %(default)s)')
 parser.add_argument('-c', dest='max_page_count', default=10, type=int,
-                    help='the max page count of illust. (default: %(default)s)')
+                    help='the max page count of illust (default: %(default)s)')
 parser.add_argument('-n', dest='illust_num', default=300, type=int,
-                    help='total number of illusts to download. (default: %(default)s)')
+                    help='total number of illusts to download (default: %(default)s)')
 
 # download options
+parser.add_argument('-k', dest='keep_json', action='store_true',
+                    help='keep the json result to files')
 parser.add_argument('-p', dest='path', type=str, default='./',
                     help='the storage path of illusts (default: %(default)s)')
 parser.add_argument('-r', dest='resolution', type=str,
                     help=('the resolution of illusts: s / m / l / o '
-                          '(i.e., square / middle / large / origin, can set multiple). '))
-parser.add_argument('-k', dest='keep_json', action='store_true',
-                    help='keep the json result to files')
+                          '(i.e., square / middle / large / origin, can set multiple)'))
 
 # date interval
 today = datetime.date.today().isoformat()
