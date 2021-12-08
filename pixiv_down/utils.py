@@ -2,6 +2,9 @@ import json
 import logging
 import time
 from functools import wraps
+from typing import Union
+
+from pixivpy3.utils import JsonDict
 
 
 def params_to_str(args=None, kwargs=None):
@@ -66,3 +69,21 @@ def save_jsonfile(data, filename: str, compress=True):
             json.dump(data, fp, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
         else:
             json.dump(data, fp, ensure_ascii=False, sort_keys=True, indent=4)
+
+
+def print_json(json_data: Union[str, bytes, dict], keys=()):
+    '''打印 JSON 数据'''
+    if isinstance(json_data, (str, bytes)):
+        _data = JsonDict(json.loads(json_data))
+    else:
+        _data = JsonDict(json_data)
+
+    if 'ALL' in keys:
+        json_str = json.dumps(_data, sort_keys=True, indent=4, ensure_ascii=False)
+        print(json_str)
+    else:
+        for k in keys:
+            v = _data.get(k)
+            if isinstance(v, (dict, list)):
+                v = json.dumps(v, sort_keys=True, indent=4, ensure_ascii=False)
+            print(f'{k} = {v}')

@@ -10,6 +10,7 @@ from getpass import getpass
 from typing import List
 
 from pixiv_down.crawler import Crawler, Illust
+from pixiv_down.utils import print_json
 
 # parse args
 parser = ArgumentParser()
@@ -39,6 +40,8 @@ parser.add_argument('-n', dest='illust_num', default=300, type=int,
 # download options
 parser.add_argument('-k', dest='keep_json', action='store_true',
                     help='keep the json result to files')
+parser.add_argument('--show', dest='show_json', type=str,
+                    help='print the json result on stdout')
 parser.add_argument('-p', dest='path', type=str, default='./',
                     help='the storage path of illusts (default: %(default)s)')
 parser.add_argument('-r', dest='resolution', type=str,
@@ -70,22 +73,28 @@ logging.root.setLevel(loglevel)
 
 # parse illust resolution
 if args.resolution:
-    IMG_TYPES = {'s': 'square', 'm': 'medium', 'l': 'large', 'o': 'origin'}
-    resolutions = {v: True if k in args.resolution else False
-                   for k, v in IMG_TYPES.items()}
+    _img_types = {'s': 'square', 'm': 'medium', 'l': 'large', 'o': 'origin'}
+    RESOLUTIONS = {v: True if k in args.resolution else False
+                   for k, v in _img_types.items()}
 
 # get the refresh_token
-refresh_token = os.environ.get('PIXIV_TOKEN') or getpass('Please enter the refresh_token:')
+REFRESH_TOKEN = os.environ.get('PIXIV_TOKEN') or getpass('Please enter the refresh_token:')
 
 # check the download path
 if not os.path.isdir(args.path):
     print(f'`{args.path}` is not a directory.')
     sys.exit(1)
 else:
-    download_dir = os.path.join(args.path, 'pixdown')
+    DOWNLOAD_DIR = os.path.join(args.path, 'pixdown')
+
+# parse show_json option
+if not args.show_json:
+    JSON_KEYS = []
+else:
+    JSON_KEYS = args.show_json.split(',')
 
 # login
-crawler = Crawler(refresh_token=refresh_token, download_dir=download_dir)
+crawler = Crawler(refresh_token=REFRESH_TOKEN, download_dir=DOWNLOAD_DIR)
 user = crawler.login()
 print('Login OK!\n')
 
@@ -116,11 +125,15 @@ def download_illusts_by_artist():
                 bk = illust.total_bookmarks / 1000
                 print(f'iid={illust.id}  bookmark={bk:.1f}k  total={n_crawls}')
 
+                if JSON_KEYS:
+                    print_json(illust, keys=JSON_KEYS)
+                    print('-' * 50, end='\n\n')
+
                 if n_crawls >= args.illust_num:
                     break
 
             if args.resolution:
-                crawler.multi_download(illusts, **resolutions)
+                crawler.multi_download(illusts, **RESOLUTIONS)
 
 
 def download_illusts_by_tag():
@@ -138,11 +151,15 @@ def download_illusts_by_tag():
                 bk = illust.total_bookmarks / 1000
                 print(f'iid={illust.id}  bookmark={bk:4.1f}k  total={n_crawls}')
 
+                if JSON_KEYS:
+                    print_json(illust, keys=JSON_KEYS)
+                    print('-' * 50, end='\n\n')
+
                 if n_crawls >= args.illust_num:
                     break
 
             if args.resolution:
-                crawler.multi_download(illusts, **resolutions)
+                crawler.multi_download(illusts, **RESOLUTIONS)
 
 
 def download_illusts_from_recommend():
@@ -154,11 +171,15 @@ def download_illusts_from_recommend():
         bk = illust.total_bookmarks / 1000
         print(f'iid={illust.id}  bookmark={bk:.1f}k  total={n_crawls}')
 
+        if JSON_KEYS:
+            print_json(illust, keys=JSON_KEYS)
+            print('-' * 50, end='\n\n')
+
         if n_crawls >= args.illust_num:
             break
 
     if args.resolution:
-        crawler.multi_download(illusts, **resolutions)
+        crawler.multi_download(illusts, **RESOLUTIONS)
 
 
 def download_illusts_by_related():
@@ -180,11 +201,15 @@ def download_illusts_by_related():
                 bk = illust.total_bookmarks / 1000
                 print(f'iid={illust.id}  bookmark={bk:.1f}k  total={n_crawls}')
 
+                if JSON_KEYS:
+                    print_json(illust, keys=JSON_KEYS)
+                    print('-' * 50, end='\n\n')
+
                 if n_crawls >= args.illust_num:
                     break
 
             if args.resolution:
-                crawler.multi_download(illusts.values(), **resolutions)
+                crawler.multi_download(illusts.values(), **RESOLUTIONS)
 
 
 def download_illusts_by_id():
@@ -192,6 +217,7 @@ def download_illusts_by_id():
         logging.error('not specified the illust id list')
     else:
         total = len(args.args)
+        illusts: List[Illust] = []
         for n_crawls, iid in enumerate(args.args, start=1):
             try:
                 iid = int(iid)
@@ -200,10 +226,17 @@ def download_illusts_by_id():
                 continue
             else:
                 illust = crawler.fetch_illust(iid, args.keep_json)
-                crawler.download_illust(illust, **resolutions)
+                illusts.append(illust)
 
                 bk = illust.total_bookmarks / 1000
                 print(f'iid={illust.id}  bookmark={bk:.1f}k  progress: {n_crawls} / {total}')
+
+                if JSON_KEYS:
+                    print_json(illust, keys=JSON_KEYS)
+                    print('-' * 50, end='\n\n')
+
+        if args.resolution:
+            crawler.download_illust(illusts, **RESOLUTIONS)
 
 
 def signal_hander(*_):
