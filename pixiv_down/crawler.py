@@ -140,7 +140,7 @@ class Crawler:
 
         return result
 
-    def fetch_illust(self, iid: int, keep_json=True):
+    def fetch_illust(self, iid: int, keep_json=False):
         '''获取 illust 数据
             Return: {
                 "caption": "ジャケット＋メイド服を考えた人は天才。",
@@ -207,11 +207,11 @@ class Crawler:
         jsonfile: Path = self.dir_json_illust.joinpath(f'{iid}.json')  # type: ignore
         if jsonfile.exists():
             with jsonfile.open() as fp:
-                illust = JsonDict(json.load(fp))
+                illust = Illust(json.load(fp))
         else:
             result = self.api.illust_detail(iid)
             if result and 'illust' in result:
-                illust = result['illust']
+                illust = Illust(result['illust'])
             else:
                 raise ValueError(f"can't download {iid}: {result}")
 
@@ -220,7 +220,7 @@ class Crawler:
 
         return illust
 
-    def ifetch(self, pixiv_api, keep_json=True, max_count=15, min_bookmarks=1000):
+    def ifetch(self, pixiv_api, keep_json=False, max_count=10, min_bookmarks=3000):
         def wrapper(**kwargs):  # 被装饰后，仅接受 kwargs 形式的参数
             while True:
                 result = pixiv_api(**kwargs)
@@ -291,12 +291,11 @@ class Crawler:
 
     def multi_download(self, illusts: list, square=True, medium=False, large=False, origin=False):
         '''下载多个 illusts'''
-        total = len(illusts)
-        for i, illust in enumerate(illusts):
+        for num, illust in enumerate(illusts, start=1):
             self.download_illust(illust, square, medium, large, origin)
-            logging.info(f'downloading progress: {i+1} / {total}')
+            logging.info(f'downloading progress: {num}')
 
-    def fetch_artist(self, aid, keep_json=True):
+    def fetch_artist(self, aid, keep_json=False):
         '''获取用户数据
             Return {
                 "profile": {
@@ -380,7 +379,7 @@ class Crawler:
             self.api.download(artist['user']['profile_image_urls']['medium'],
                               path=self.dir_img_avatar)
 
-    def fetch_ranking(self, date: datetime.date, keep_json=True):
+    def fetch_web_ranking(self, date: datetime.date, keep_json=False):
         '''从 Web 下载排行榜数据
             Return [
                 {
@@ -460,10 +459,10 @@ class Crawler:
 
         return ranking
 
-    def download_ranking(self, date, only_new=True, max_count=15, min_bookmarks=1000,
-                         square=True, medium=False, large=False, origin=False):
-        ranking = self.fetch_ranking(date)
-        for il in ranking:
+    def ifetch_ranking(self, date, only_new=True,
+                       keep_json=False, max_count=10, min_bookmarks=3000):
+        web_ranking = self.fetch_ranking(date, keep_json)
+        for il in web_ranking:
             # 检查是否只下载当天的数据
             if only_new and int(il['yes_rank']) != 0:
                 continue
@@ -471,20 +470,29 @@ class Crawler:
             if int(il['illust_page_count']) > max_count:
                 continue
             # 获取 Illust 详细数据
-            iid = il['illust_id']
-            illust = self.fetch_illust(iid)
+            illust = self.fetch_illust(il['illust_id'], False)
+
             # 检查是否满足最低收藏数
             if illust['total_bookmarks'] < min_bookmarks:
                 continue
-            self.download_illust(iid, square, medium, large, origin)
 
-    def ifetch_artist_artwork(self, aid, keep_json=True, max_count=15, min_bookmarks=1000):
+            # 检查是否需要保存 json
+            if keep_json:
+                jsonfile = self.dir_json_illust.joinpath(f'{illust.id}.json')
+                ut.save_jsonfile(illust, jsonfile.as_posix())
+
+            logging.debug(f'fetched Illust({illust.id})'
+                          f'created={illust.create_date[:10]}'
+                          f'bookmark={illust.total_bookmarks}')
+            yield illust
+
+    def ifetch_artist_artwork(self, aid, keep_json=False, max_count=10, min_bookmarks=3000):
         '''迭代获取 artist 的 Illust'''
         fetcher = self.ifetch(self.api.user_illusts, keep_json, max_count, min_bookmarks)
         return fetcher(user_id=aid)
 
     def ifetch_tag(self, name, start: Optional[str] = None, end: Optional[str] = None,
-                   keep_json=True, max_count=15, min_bookmarks=1000):
+                   keep_json=False, max_count=10, min_bookmarks=3000):
         '''迭代获取 Tag 的 Illust'''
         if start and end:
             n1 = n2 = 0
@@ -506,12 +514,12 @@ class Crawler:
             fetcher = self.ifetch(self.api.search_illust, keep_json, max_count, min_bookmarks)
             return fetcher(word=name)
 
-    def ifetch_recommend(self, keep_json=True, max_count=15, min_bookmarks=1000):
+    def ifetch_recommend(self, keep_json=False, max_count=10, min_bookmarks=3000):
         '''迭代获取推荐的 Illust'''
         fetcher = self.ifetch(self.api.illust_recommended, keep_json, max_count, min_bookmarks)
         return fetcher()
 
-    def ifetch_related(self, iid, keep_json=True, max_count=15, min_bookmarks=1000):
+    def ifetch_related(self, iid, keep_json=False, max_count=10, min_bookmarks=3000):
         '''迭代获取某作品关联的 Illust'''
         fetcher = self.ifetch(self.api.illust_related, keep_json, max_count, min_bookmarks)
         return fetcher(illust_id=iid)

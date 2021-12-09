@@ -21,44 +21,49 @@ _download_types = [
     'tag',      # download illusts by tag name
     'rcmd',     # download illusts from recomments
     'related',  # download related illusts of the specified illust
+    'ranking',  # download daily ranking of the specified day
 ]
 parser.add_argument(dest='download_type', choices=_download_types,
-                    help='the download type: iid / aid / tag / rcmd / related')
+                    help='The download type: iid / aid / tag / rcmd / related / ranking')
 
 parser.add_argument(dest='args', nargs='*',
-                    help=("the positional args for download type, "
+                    help=("The positional args for download type, "
                           "e.g., `illust ids` / `artist ids` / `tag names`"))
 
 # bookmars and page count
 parser.add_argument('-b', dest='min_bookmarks', default=3000, type=int,
-                    help='the min bookmarks of illust (default: %(default)s)')
+                    help='The min bookmarks of illust (default: %(default)s)')
 parser.add_argument('-c', dest='max_page_count', default=10, type=int,
-                    help='the max page count of illust (default: %(default)s)')
+                    help='The max page count of illust (default: %(default)s)')
 parser.add_argument('-n', dest='illust_num', default=300, type=int,
-                    help='total number of illusts to download (default: %(default)s)')
+                    help='Total number of illusts to download (default: %(default)s)')
 
 # download options
 parser.add_argument('-k', dest='keep_json', action='store_true',
-                    help='keep the json result to files')
+                    help='Keep the json result to files')
 parser.add_argument('--show', dest='show_json', type=str,
-                    help='print the json result on stdout')
+                    help='Print the json result on stdout')
 parser.add_argument('-p', dest='path', type=str, default='./',
-                    help='the storage path of illusts (default: %(default)s)')
+                    help='The storage path of illusts (default: %(default)s)')
 parser.add_argument('-r', dest='resolution', type=str,
-                    help=('the resolution of illusts: s / m / l / o '
+                    help=('The resolution of illusts: s / m / l / o '
                           '(i.e., square / middle / large / origin, can set multiple)'))
 
 # date interval
-today = datetime.date.today().isoformat()
-parser.add_argument('-s', dest='start', type=str, default=today,
-                    help='the start date of illust when search tag (default: `%(default)s`)')
+today = datetime.date.today()
+parser.add_argument('-s', dest='start', type=str, default=today.isoformat(),
+                    help='The start date of illust when search tag (default: today)')
 parser.add_argument('-e', dest='end', type=str, default='2016-01-01',
-                    help='the end date of illust when search tag (default: `%(default)s`)')
+                    help='The end date of illust when search tag (default: `%(default)s`)')
+
+# only download the newest illusts on ranking
+parser.add_argument('--only_new', action='store_true',
+                    help='Only download the newest illusts from ranking')
 
 # log level
 parser.add_argument('-l', dest='loglevel', type=str, default='warn',
                     choices=['debug', 'info', 'warn', 'error'],
-                    help='the log level (default: `%(default)s`)')
+                    help='The log level (default: `%(default)s`)')
 args = parser.parse_args()
 
 
@@ -234,6 +239,37 @@ def download_illusts_by_id():
                 if JSON_KEYS:
                     print_json(illust, keys=JSON_KEYS)
                     print('-' * 50, end='\n\n')
+
+        if args.resolution:
+            crawler.multi_download(illusts, **RESOLUTIONS)
+
+
+def iget_days():
+    for date in args.args:
+        if ',' in date:
+            start, end = date.split(',')
+            try:
+                start = datetime.date.fromisoformat(start)
+                end = datetime.date.fromisoformat(end)
+            except ValueError:
+                continue
+
+            while start <= end:
+                yield start
+                start += datetime.timedelta(1)
+        else:
+            try:
+                yield datetime.date.fromisoformat(date)
+            except ValueError:
+                pass
+
+
+def download_illust_from_ranking():
+    for date in iget_days():
+        illusts: List[Illust] = []
+        for illust in crawler.ifetch_ranking(date, args.only_new, args.keep_json,
+                                             args.max_page_count, args.min_bookmarks):
+            illusts.append(illust)
 
         if args.resolution:
             crawler.multi_download(illusts, **RESOLUTIONS)
