@@ -209,7 +209,7 @@ def download_illusts_by_related():
                     break
 
             if args.resolution:
-                crawler.multi_download(illusts.values(), **RESOLUTIONS)
+                crawler.multi_download(illusts, **RESOLUTIONS)
 
 
 def download_illusts_by_id():
@@ -236,7 +236,7 @@ def download_illusts_by_id():
                     print('-' * 50, end='\n\n')
 
         if args.resolution:
-            crawler.download_illust(illusts, **RESOLUTIONS)
+            crawler.multi_download(illusts, **RESOLUTIONS)
 
 
 def signal_hander(*_):
