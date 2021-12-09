@@ -49,6 +49,9 @@ usage: pixd [-h]
     download related illusts of the specified illust id.
     e.g., `pixd related 70937229 87749466`
 
+- `ranking`
+    download daily ranking of the specified day
+    e.g., `pixd ranking 2021-01-01 2021-02-01,2021-03-31`
 
 ### Optional Arguments
 
@@ -79,6 +82,9 @@ usage: pixd [-h]
 
 - `-e END`
     the end date of illust when search tag (default: `2016-01-01`)
+
+- `--only_new`
+    Only download the newest illusts from ranking
 
 - `-l {debug,info,warn,error}`
     the log level (default: `warn`)
