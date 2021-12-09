@@ -267,9 +267,17 @@ def iget_days():
 def download_illust_from_ranking():
     for date in iget_days():
         illusts: List[Illust] = []
-        for illust in crawler.ifetch_ranking(date, args.only_new, args.keep_json,
-                                             args.max_page_count, args.min_bookmarks):
+        fetcher = crawler.ifetch_ranking(date, args.only_new, args.keep_json,
+                                         args.max_page_count, args.min_bookmarks)
+        for n_crawls, illust in enumerate(fetcher, start=1):
             illusts.append(illust)
+
+            bk = illust.total_bookmarks / 1000
+            print(f'iid={illust.id}  bookmark={bk:.1f}k  progress: {n_crawls}')
+
+            if JSON_KEYS:
+                print_json(illust, keys=JSON_KEYS)
+                print('-' * 50, end='\n\n')
 
         if args.resolution:
             crawler.multi_download(illusts, **RESOLUTIONS)
@@ -283,7 +291,12 @@ def signal_hander(*_):
 def main():
     signal.signal(signal.SIGINT, signal_hander)
 
-    if args.download_type == 'aid':
+    if args.download_type == 'iid':
+        # NOTE: 此模式下，会忽略 min_bookmarks，max_page_count，top，max_crawl 四个限制条件
+        download_illusts_by_id()
+        print('============== illusts fetched ==============\n\n')
+
+    elif args.download_type == 'aid':
         download_illusts_by_artist()
         print('============== artist works fetched ==============\n\n')
 
@@ -299,10 +312,10 @@ def main():
         download_illusts_by_related()
         print('============== related fetched ==============\n\n')
 
-    elif args.download_type == 'iid':
-        # NOTE: 此模式下，会忽略 min_bookmarks，max_page_count，top，max_crawl 四个限制条件
-        download_illusts_by_id()
-        print('============== illusts fetched ==============\n\n')
+    elif args.download_type == 'ranking':
+        download_illust_from_ranking()
+        print('============== ranking fetched ==============\n\n')
+
     else:
         print('wrong type')
         sys.exit(1)

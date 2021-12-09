@@ -448,7 +448,10 @@ class Crawler:
                 url = url_tmpl % next_page
                 resp = requests.get(url, headers=headers, stream=True)
                 if resp.status_code != 200:
-                    logging.error(resp.text)
+                    if 'error' in resp.text:
+                        logging.error(resp.json()['error'])
+                    else:
+                        logging.error(resp.text)
                     break
                 result = resp.json()
                 ranking.extend(result['contents'])
@@ -461,7 +464,7 @@ class Crawler:
 
     def ifetch_ranking(self, date, only_new=True,
                        keep_json=False, max_count=10, min_bookmarks=3000):
-        web_ranking = self.fetch_ranking(date, keep_json)
+        web_ranking = self.fetch_web_ranking(date, keep_json)
         for il in web_ranking:
             # 检查是否只下载当天的数据
             if only_new and int(il['yes_rank']) != 0:
@@ -485,6 +488,7 @@ class Crawler:
                           f'created={illust.create_date[:10]}'
                           f'bookmark={illust.total_bookmarks}')
             yield illust
+            time.sleep(random.random() + random.randint(1, 3))
 
     def ifetch_artist_artwork(self, aid, keep_json=False, max_count=10, min_bookmarks=3000):
         '''迭代获取 artist 的 Illust'''
