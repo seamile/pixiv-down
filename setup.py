@@ -22,7 +22,7 @@ setuptools.setup(
     ],
     entry_points={
         'console_scripts': [
-            'pixd=pixiv_down.pixiv_down:main',
+            'pixd=pixiv_down.commands:main',
         ],
     },
     classifiers=[

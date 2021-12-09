@@ -1,6 +1,6 @@
 # Pixiv Downloader
 
-A command line pixiv illusts downloader.
+A command line pixiv illust downloader.
 
 
 ## Install
