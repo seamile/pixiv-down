@@ -242,8 +242,8 @@ class Crawler:
                     elif il.page_count > max_count:
                         logging.debug(f"ignore Illust({il.id}): img_count is {il.page_count}")
                         continue
-                    elif il.x_restrict > 0:
-                        logging.debug(f"ignore Illust({il.id}): x_restrict is {il.x_restrict}")
+                    elif il.x_restrict > 0 or il.sanity_level > 4:
+                        logging.debug(f"ignore Illust({il.id}): x_restrict={il.x_restrict} sanity_level={il.sanity_level}")
                         continue
                     else:
                         if keep_json:
