@@ -226,11 +226,11 @@ def download_illusts_by_id():
         for n_crawls, iid in enumerate(args.args, start=1):
             try:
                 iid = int(iid)
-            except (TypeError, ValueError):
-                print(f'wrong illust id: {iid}')
+                illust = crawler.fetch_illust(iid, args.keep_json)
+            except (TypeError, ValueError) as e:
+                print(e)
                 continue
             else:
-                illust = crawler.fetch_illust(iid, args.keep_json)
                 illusts.append(illust)
 
                 bk = illust.total_bookmarks / 1000

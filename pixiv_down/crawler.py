@@ -210,10 +210,9 @@ class Crawler:
                 illust = Illust(json.load(fp))
         else:
             result = self.api.illust_detail(iid)
-            if result and 'illust' in result:
-                illust = Illust(result['illust'])
-            else:
-                raise ValueError(f"can't download {iid}: {result}")
+            if 'illust' not in result:
+                return
+            illust = Illust(result['illust'])
 
             if keep_json:
                 ut.save_jsonfile(illust, filename=jsonfile.as_posix())
@@ -474,6 +473,8 @@ class Crawler:
                 continue
             # 获取 Illust 详细数据
             illust = self.fetch_illust(il['illust_id'], False)
+            if not illust:
+                continue
 
             # 检查是否满足最低收藏数
             if illust['total_bookmarks'] < min_bookmarks:
