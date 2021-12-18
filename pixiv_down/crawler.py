@@ -263,8 +263,8 @@ class Crawler:
                     il = Illust(il)
 
                     if il.is_qualified(max_count, min_bookmarks, min_quality, sex_level):
-                        logging.debug(f'fetched Illust({il.id})'
-                                      f'created={il.create_date[:10]}'
+                        logging.debug(f'fetched Illust({il.id}) '
+                                      f'created={il.create_date[:10]} '
                                       f'bookmark={il.total_bookmarks}')
                         if keep_json:
                             jsonfile = self.dir_json_illust.joinpath(f'{il.id}.json')
@@ -496,8 +496,8 @@ class Crawler:
                     jsonfile = self.dir_json_illust.joinpath(f'{illust.id}.json')
                     ut.save_jsonfile(illust, jsonfile.as_posix())
 
-                logging.debug(f'fetched Illust({illust.id})'
-                              f'created={illust.create_date[:10]}'
+                logging.debug(f'fetched Illust({illust.id}) '
+                              f'created={illust.create_date[:10]} '
                               f'bookmark={illust.total_bookmarks}')
                 yield illust
             time.sleep(random.random() + random.randint(1, 3))

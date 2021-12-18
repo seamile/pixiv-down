@@ -39,8 +39,8 @@ parser.add_argument('-q', dest='min_quality', type=int,
                     help=('The min quality of illust, '
                           'the quality eauals the num of bookmarks per 100 views '
                           '(default: %(default)s)'))
-parser.add_argument('-s', dest='max_sex_level', choices=[1, 2, 3], default=2, type=int,
-                    help='The mmax sex level of illust (default: %(default)s)')
+parser.add_argument('-l', dest='max_sex_level', choices=[1, 2, 3], default=2, type=int,
+                    help='The max sex level of illust (default: %(default)s)')
 parser.add_argument('-n', dest='illust_num', default=300, type=int,
                     help='Total number of illusts to download (default: %(default)s)')
 
@@ -67,7 +67,7 @@ parser.add_argument('--only_new', action='store_true',
                     help='Only download the newest illusts from ranking')
 
 # log level
-parser.add_argument('-l', dest='loglevel', type=str, default='warn',
+parser.add_argument('--log', dest='loglevel', type=str, default='warn',
                     choices=['debug', 'info', 'warn', 'error'],
                     help='The log level (default: `%(default)s`)')
 args = parser.parse_args()
