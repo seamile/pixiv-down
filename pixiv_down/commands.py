@@ -35,6 +35,10 @@ parser.add_argument('-b', dest='min_bookmarks', default=3000, type=int,
                     help='The min bookmarks of illust (default: %(default)s)')
 parser.add_argument('-c', dest='max_page_count', default=10, type=int,
                     help='The max page count of illust (default: %(default)s)')
+parser.add_argument('-q', dest='min_quality', type=int,
+                    help=('The min quality of illust, '
+                          'the quality eauals the num of bookmarks per 100 views '
+                          '(default: %(default)s)'))
 parser.add_argument('-n', dest='illust_num', default=300, type=int,
                     help='Total number of illusts to download (default: %(default)s)')
 
@@ -120,10 +124,9 @@ def download_illusts_by_artist():
                 continue
 
             illusts: List[Illust] = []
-            fetcher = crawler.ifetch_artist_artwork(int(aid),
-                                                    args.keep_json,
-                                                    args.max_page_count,
-                                                    args.min_bookmarks)
+            fetcher = crawler.ifetch_artist_artwork(aid,
+                                                    args.keep_json, args.max_page_count,
+                                                    args.min_bookmarks, args.min_quality)
             for n_crawls, illust in enumerate(fetcher, start=1):
                 illusts.append(illust)
 
@@ -149,7 +152,8 @@ def download_illusts_by_tag():
             print(f'scraping tag: {tag}')
             illusts: List[Illust] = []
             fetcher = crawler.ifetch_tag(tag, args.start, args.end,
-                                         args.keep_json, args.max_page_count, args.min_bookmarks)
+                                         args.keep_json, args.max_page_count,
+                                         args.min_bookmarks, args.min_quality)
             for n_crawls, illust in enumerate(fetcher, start=1):
                 illusts.append(illust)
 
@@ -169,7 +173,8 @@ def download_illusts_by_tag():
 
 def download_illusts_from_recommend():
     illusts: List[Illust] = []
-    fetcher = crawler.ifetch_recommend(args.keep_json, args.max_page_count, args.min_bookmarks)
+    fetcher = crawler.ifetch_recommend(args.keep_json, args.max_page_count,
+                                       args.min_bookmarks, args.min_quality)
     for n_crawls, illust in enumerate(fetcher, start=1):
         illusts.append(illust)
 
@@ -199,7 +204,8 @@ def download_illusts_by_related():
                 print(f'wrong illust id: {iid}')
                 continue
 
-            fetcher = crawler.ifetch_related(iid, args.keep_json, args.max_page_count, args.min_bookmarks)
+            fetcher = crawler.ifetch_related(iid, args.keep_json, args.max_page_count,
+                                             args.min_bookmarks, args.min_quality)
             for n_crawls, illust in enumerate(fetcher, start=1):
                 illusts.append(illust)
 
@@ -267,8 +273,9 @@ def iget_days():
 def download_illust_from_ranking():
     for date in iget_days():
         illusts: List[Illust] = []
-        fetcher = crawler.ifetch_ranking(date, args.only_new, args.keep_json,
-                                         args.max_page_count, args.min_bookmarks)
+        fetcher = crawler.ifetch_ranking(date, args.only_new,
+                                         args.keep_json, args.max_page_count,
+                                         args.min_bookmarks, args.min_quality)
         for n_crawls, illust in enumerate(fetcher, start=1):
             illusts.append(illust)
 
