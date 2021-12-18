@@ -39,6 +39,8 @@ parser.add_argument('-q', dest='min_quality', type=int,
                     help=('The min quality of illust, '
                           'the quality eauals the num of bookmarks per 100 views '
                           '(default: %(default)s)'))
+parser.add_argument('-s', dest='max_sex_level', choices=[1, 2, 3], default=2, type=int,
+                    help='The mmax sex level of illust (default: %(default)s)')
 parser.add_argument('-n', dest='illust_num', default=300, type=int,
                     help='Total number of illusts to download (default: %(default)s)')
 
@@ -126,12 +128,13 @@ def download_illusts_by_artist():
             illusts: List[Illust] = []
             fetcher = crawler.ifetch_artist_artwork(aid,
                                                     args.keep_json, args.max_page_count,
-                                                    args.min_bookmarks, args.min_quality)
+                                                    args.min_bookmarks, args.min_quality,
+                                                    args.max_sex_level)
             for n_crawls, illust in enumerate(fetcher, start=1):
                 illusts.append(illust)
 
                 bk = illust.total_bookmarks / 1000
-                print(f'iid={illust.id}  bookmark={bk:.1f}k  total={n_crawls}')
+                print(f'iid={illust.id}  bookmark={bk:.1f}k  q={illust.quality}  total={n_crawls}')
 
                 if JSON_KEYS:
                     print_json(illust, keys=JSON_KEYS)
@@ -153,7 +156,8 @@ def download_illusts_by_tag():
             illusts: List[Illust] = []
             fetcher = crawler.ifetch_tag(tag, args.start, args.end,
                                          args.keep_json, args.max_page_count,
-                                         args.min_bookmarks, args.min_quality)
+                                         args.min_bookmarks, args.min_quality,
+                                         args.max_sex_level)
             for n_crawls, illust in enumerate(fetcher, start=1):
                 illusts.append(illust)
 
@@ -174,12 +178,13 @@ def download_illusts_by_tag():
 def download_illusts_from_recommend():
     illusts: List[Illust] = []
     fetcher = crawler.ifetch_recommend(args.keep_json, args.max_page_count,
-                                       args.min_bookmarks, args.min_quality)
+                                       args.min_bookmarks, args.min_quality,
+                                       args.max_sex_level)
     for n_crawls, illust in enumerate(fetcher, start=1):
         illusts.append(illust)
 
         bk = illust.total_bookmarks / 1000
-        print(f'iid={illust.id}  bookmark={bk:.1f}k  total={n_crawls}')
+        print(f'iid={illust.id}  bookmark={bk:.1f}k  q={illust.quality}  total={n_crawls}')
 
         if JSON_KEYS:
             print_json(illust, keys=JSON_KEYS)
@@ -205,12 +210,13 @@ def download_illusts_by_related():
                 continue
 
             fetcher = crawler.ifetch_related(iid, args.keep_json, args.max_page_count,
-                                             args.min_bookmarks, args.min_quality)
+                                             args.min_bookmarks, args.min_quality,
+                                             args.max_sex_level)
             for n_crawls, illust in enumerate(fetcher, start=1):
                 illusts.append(illust)
 
                 bk = illust.total_bookmarks / 1000
-                print(f'iid={illust.id}  bookmark={bk:.1f}k  total={n_crawls}')
+                print(f'iid={illust.id}  bookmark={bk:.1f}k  q={illust.quality}  total={n_crawls}')
 
                 if JSON_KEYS:
                     print_json(illust, keys=JSON_KEYS)
@@ -240,7 +246,7 @@ def download_illusts_by_id():
                 illusts.append(illust)
 
                 bk = illust.total_bookmarks / 1000
-                print(f'iid={illust.id}  bookmark={bk:.1f}k  progress: {n_crawls} / {total}')
+                print(f'iid={illust.id}  bookmark={bk:.1f}k  q={illust.quality}  progress: {n_crawls} / {total}')
 
                 if JSON_KEYS:
                     print_json(illust, keys=JSON_KEYS)
@@ -275,12 +281,13 @@ def download_illust_from_ranking():
         illusts: List[Illust] = []
         fetcher = crawler.ifetch_ranking(date, args.only_new,
                                          args.keep_json, args.max_page_count,
-                                         args.min_bookmarks, args.min_quality)
+                                         args.min_bookmarks, args.min_quality,
+                                         args.max_sex_level)
         for n_crawls, illust in enumerate(fetcher, start=1):
             illusts.append(illust)
 
             bk = illust.total_bookmarks / 1000
-            print(f'iid={illust.id}  bookmark={bk:.1f}k  progress: {n_crawls}')
+            print(f'iid={illust.id}  bookmark={bk:.1f}k  q={illust.quality}  progress: {n_crawls}')
 
             if JSON_KEYS:
                 print_json(illust, keys=JSON_KEYS)

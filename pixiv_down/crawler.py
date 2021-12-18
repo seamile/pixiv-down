@@ -20,6 +20,37 @@ class Illust(JsonDict):
     def quality(self):
         return round(self.total_bookmarks / self.total_view * 100, 2)
 
+    def is_qualified(self, max_count=10, min_bookmarks=3000,
+                     min_quality=20, sex_level=2) -> bool:
+
+        if self.type != 'illust':
+            logging.debug(f"ignore Illust({self.id}): type is {self.type}")
+            return False
+        if self.page_count > max_count:
+            logging.debug(f"ignore Illust({self.id}): img_count is {self.page_count}")
+            return False
+        if self.total_bookmarks < min_bookmarks:
+            logging.debug(f"ignore Illust({self.id}): bookmarks is {self.total_bookmarks}")
+            return False
+
+        if sex_level not in [1, 2, 3]:
+            sex_level = 2
+        if sex_level < 3 and self.x_restrict > 0:
+            logging.debug(f"ignore Illust({self.id}): x_restrict={self.x_restrict}")
+            return False
+        if sex_level == 2 and self.sanity_level > 4:
+            logging.debug(f"ignore Illust({self.id}): sanity_level={self.sanity_level}")
+            return False
+        if sex_level == 1 and self.sanity_level > 2:
+            logging.debug(f"ignore Illust({self.id}): sanity_level={self.sanity_level}")
+            return False
+
+        if min_quality and self.quality < min_quality:
+            logging.debug(f"ignore Illust({self.id}): quality is {self.quality}")
+            return False
+
+        return True
+
     def __lt__(self, other: 'Illust'):
         if self.total_bookmarks == other.total_bookmarks:
             return self.quality < other.quality
@@ -221,40 +252,23 @@ class Crawler:
 
         return illust
 
-    def ifetch(self, pixiv_api, keep_json, max_count, min_bookmarks, min_quality=None):
-        def wrapper(**kwargs):  # 被装饰后，仅接受 kwargs 形式的参数
+    def ifetch(self, keep_json, max_count, min_bookmarks, min_quality=None, sex_level=2):
+        def wrapper(pixiv_api, **kwargs):  # 仅接受 kwargs 形式的参数
             while True:
                 result = pixiv_api(**kwargs)
-                if not result:
-                    break
-
-                if not result.illusts:
+                if not result or not result.illusts:
                     break
 
                 for il in result.illusts:
                     il = Illust(il)
 
-                    if il.type != 'illust':
-                        logging.debug(f"ignore Illust({il.id}): illust_type is {il.type}")
-                        continue
-                    elif il.total_bookmarks < min_bookmarks:
-                        logging.debug(f"ignore Illust({il.id}): bookmarks is {il.total_bookmarks}")
-                        continue
-                    elif il.page_count > max_count:
-                        logging.debug(f"ignore Illust({il.id}): img_count is {il.page_count}")
-                        continue
-                    elif il.x_restrict > 0 or il.sanity_level > 4:
-                        logging.debug(f"ignore Illust({il.id}): x_restrict={il.x_restrict} sanity_level={il.sanity_level}")
-                        continue
-                    elif min_quality and il.quality < min_quality:
-                        continue
-                    else:
-                        if keep_json:
-                            jsonfile = self.dir_json_illust.joinpath(f'{il.id}.json')
-                            ut.save_jsonfile(il, jsonfile.as_posix())
+                    if il.is_qualified(max_count, min_bookmarks, min_quality, sex_level):
                         logging.debug(f'fetched Illust({il.id})'
                                       f'created={il.create_date[:10]}'
                                       f'bookmark={il.total_bookmarks}')
+                        if keep_json:
+                            jsonfile = self.dir_json_illust.joinpath(f'{il.id}.json')
+                            ut.save_jsonfile(il, jsonfile.as_posix())
                         yield il
 
                 if result.next_url:
@@ -466,48 +480,44 @@ class Crawler:
         return ranking
 
     def ifetch_ranking(self, date, only_new=True,
-                       keep_json=False, max_count=10, min_bookmarks=3000, min_quality=None):
+                       keep_json=False, max_count=10, min_bookmarks=3000,
+                       min_quality=None, sex_level=2):
         web_ranking = self.fetch_web_ranking(date, keep_json)
         for il in web_ranking:
             # 检查是否只下载当天的数据
             if only_new and int(il['yes_rank']) != 0:
                 continue
-            # 检查图片数量是否过多
-            if int(il['illust_page_count']) > max_count:
-                continue
+
             # 获取 Illust 详细数据
             illust = self.fetch_illust(il['illust_id'], False)
-            if not illust:
-                continue
+            if illust and illust.is_qualified(max_count, min_bookmarks, min_quality, sex_level):
+                # 检查是否需要保存 json
+                if keep_json:
+                    jsonfile = self.dir_json_illust.joinpath(f'{illust.id}.json')
+                    ut.save_jsonfile(illust, jsonfile.as_posix())
 
-            # 检查是否满足最低收藏数
-            if illust['total_bookmarks'] < min_bookmarks:
-                continue
-
-            # 检查是否需要保存 json
-            if keep_json:
-                jsonfile = self.dir_json_illust.joinpath(f'{illust.id}.json')
-                ut.save_jsonfile(illust, jsonfile.as_posix())
-
-            logging.debug(f'fetched Illust({illust.id})'
-                          f'created={illust.create_date[:10]}'
-                          f'bookmark={illust.total_bookmarks}')
-            yield illust
+                logging.debug(f'fetched Illust({illust.id})'
+                              f'created={illust.create_date[:10]}'
+                              f'bookmark={illust.total_bookmarks}')
+                yield illust
             time.sleep(random.random() + random.randint(1, 3))
 
-    def ifetch_artist_artwork(self, aid, keep_json=False, max_count=10, min_bookmarks=3000, min_quality=None):
+    def ifetch_artist_artwork(self, aid,
+                              keep_json=False, max_count=10, min_bookmarks=3000,
+                              min_quality=None, sex_level=2):
         '''迭代获取 artist 的 Illust'''
-        fetcher = self.ifetch(self.api.user_illusts, keep_json, max_count, min_bookmarks, min_quality)
-        return fetcher(user_id=aid)
+        fetcher = self.ifetch(keep_json, max_count, min_bookmarks, min_quality, sex_level)
+        return fetcher(self.api.user_illusts, user_id=aid)
 
     def ifetch_tag(self, name, start: Optional[str] = None, end: Optional[str] = None,
-                   keep_json=False, max_count=10, min_bookmarks=3000, min_quality=None):
+                   keep_json=False, max_count=10, min_bookmarks=3000,
+                   min_quality=None, sex_level=2):
         '''迭代获取 Tag 的 Illust'''
         if start and end:
             n1 = n2 = 0
             while start > end:
-                fetcher = self.ifetch(self.api.search_illust, keep_json, max_count, min_bookmarks, min_quality)
-                for illust in fetcher(word=name, start_date=start, end_date=end):
+                fetcher = self.ifetch(keep_json, max_count, min_bookmarks, min_quality, sex_level)
+                for illust in fetcher(self.api.search_illust, word=name, start_date=start, end_date=end):
                     yield illust
                     n1 += 1
 
@@ -520,15 +530,17 @@ class Crawler:
                     break
             logging.info(f'the illusts created before {end} have been checked')
         else:
-            fetcher = self.ifetch(self.api.search_illust, keep_json, max_count, min_bookmarks, min_quality)
-            return fetcher(word=name)
+            fetcher = self.ifetch(keep_json, max_count, min_bookmarks, min_quality, sex_level)
+            return fetcher(self.api.search_illust, word=name)
 
-    def ifetch_recommend(self, keep_json=False, max_count=10, min_bookmarks=3000, min_quality=None):
+    def ifetch_recommend(self, keep_json=False, max_count=10, min_bookmarks=3000,
+                         min_quality=None, sex_level=2):
         '''迭代获取推荐的 Illust'''
-        fetcher = self.ifetch(self.api.illust_recommended, keep_json, max_count, min_bookmarks, min_quality)
-        return fetcher()
+        fetcher = self.ifetch(keep_json, max_count, min_bookmarks, min_quality, sex_level)
+        return fetcher(self.api.illust_recommended)
 
-    def ifetch_related(self, iid, keep_json=False, max_count=10, min_bookmarks=3000, min_quality=None):
+    def ifetch_related(self, iid, keep_json=False, max_count=10, min_bookmarks=3000,
+                       min_quality=None, sex_level=2):
         '''迭代获取某作品关联的 Illust'''
-        fetcher = self.ifetch(self.api.illust_related, keep_json, max_count, min_bookmarks, min_quality)
-        return fetcher(illust_id=iid)
+        fetcher = self.ifetch(keep_json, max_count, min_bookmarks, min_quality, sex_level)
+        return fetcher(self.api.illust_related, illust_id=iid)
