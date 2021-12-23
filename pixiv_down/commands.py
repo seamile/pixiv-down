@@ -2,6 +2,7 @@
 
 import os
 import sys
+import heapq
 import signal
 import logging
 import datetime
@@ -159,7 +160,10 @@ def download_illusts_by_tag():
                                          args.min_bookmarks, args.min_quality,
                                          args.max_sex_level)
             for n_crawls, illust in enumerate(fetcher, start=1):
-                illusts.append(illust)
+                if len(illusts) < args.illust_num:
+                    heapq.heappush(illusts, illust)
+                else:
+                    heapq.heappushpop(illusts, illust)
 
                 bk = illust.total_bookmarks / 1000
                 print(f'iid={illust.id}  bookmark={bk:4.1f}k  total={n_crawls}')
@@ -167,9 +171,6 @@ def download_illusts_by_tag():
                 if JSON_KEYS:
                     print_json(illust, keys=JSON_KEYS)
                     print('-' * 50, end='\n\n')
-
-                if n_crawls >= args.illust_num:
-                    break
 
             if args.resolution:
                 crawler.multi_download(illusts, **RESOLUTIONS)

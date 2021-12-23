@@ -18,35 +18,36 @@ class Illust(JsonDict):
 
     @property
     def quality(self):
+        '''质量'''
         return round(self.total_bookmarks / self.total_view * 100, 2)
 
     def is_qualified(self, max_count=10, min_bookmarks=3000,
                      min_quality=20, sex_level=2) -> bool:
-
+        '''检查质量是否合格'''
         if self.type != 'illust':
-            logging.debug(f"ignore Illust({self.id}): type is {self.type}")
+            logging.info(f"ignore Illust({self.id}): type is {self.type}")
             return False
         if self.page_count > max_count:
-            logging.debug(f"ignore Illust({self.id}): img_count is {self.page_count}")
+            logging.info(f"ignore Illust({self.id}): img_count is {self.page_count}")
             return False
         if self.total_bookmarks < min_bookmarks:
-            logging.debug(f"ignore Illust({self.id}): bookmarks is {self.total_bookmarks}")
+            logging.info(f"ignore Illust({self.id}): bookmarks is {self.total_bookmarks}")
             return False
 
         if sex_level not in [1, 2, 3]:
             sex_level = 2
         if sex_level < 3 and self.x_restrict > 0:
-            logging.debug(f"ignore Illust({self.id}): x_restrict={self.x_restrict}")
+            logging.info(f"ignore Illust({self.id}): x_restrict={self.x_restrict}")
             return False
         if sex_level == 2 and self.sanity_level > 4:
-            logging.debug(f"ignore Illust({self.id}): sanity_level={self.sanity_level}")
+            logging.info(f"ignore Illust({self.id}): sanity_level={self.sanity_level}")
             return False
         if sex_level == 1 and self.sanity_level > 2:
-            logging.debug(f"ignore Illust({self.id}): sanity_level={self.sanity_level}")
+            logging.info(f"ignore Illust({self.id}): sanity_level={self.sanity_level}")
             return False
 
         if min_quality and self.quality < min_quality:
-            logging.debug(f"ignore Illust({self.id}): quality is {self.quality}")
+            logging.info(f"ignore Illust({self.id}): quality is {self.quality}")
             return False
 
         return True
@@ -278,7 +279,8 @@ class Crawler:
                     logging.debug(f'request next page: {pixiv_api.__name__}({_kwargs})')
                     continue
                 else:
-                    break
+                    # return the last one
+                    return il
         return wrapper
 
     def download_illust(self, illust: dict, square=True, medium=False, large=False, origin=False):
@@ -514,21 +516,22 @@ class Crawler:
                    min_quality=None, sex_level=2):
         '''迭代获取 Tag 的 Illust'''
         if start and end:
-            n1 = n2 = 0
-            while start > end:
-                fetcher = self.ifetch(keep_json, max_count, min_bookmarks, min_quality, sex_level)
-                for illust in fetcher(self.api.search_illust, word=name, start_date=start, end_date=end):
-                    yield illust
-                    n1 += 1
+            while start > end:  # type: ignore
+                func = self.ifetch(keep_json, max_count, min_bookmarks, min_quality, sex_level)
+                fetcher = func(self.api.search_illust, word=name, start_date=start, end_date=end)
 
-                if n1 > n2:
-                    n2 = n1
-                    last_date = datetime.datetime.fromisoformat(illust.create_date).date()
-                    start = (last_date - datetime.timedelta(1)).isoformat()
-                    logging.info(f'the illusts created before {start} have been checked')
-                else:
-                    break
-            logging.info(f'the illusts created before {end} have been checked')
+                try:
+                    while True:
+                        illust = next(fetcher)
+                        yield illust
+                except StopIteration as e:
+                    if e.value:
+                        illust = e.value
+                        last_date = datetime.datetime.fromisoformat(illust.create_date).date()
+                        start = (last_date - datetime.timedelta(1)).isoformat()
+                        logging.info(f'the illusts created before {start} have been checked')
+                    else:
+                        break
         else:
             fetcher = self.ifetch(keep_json, max_count, min_bookmarks, min_quality, sex_level)
             return fetcher(self.api.search_illust, word=name)
