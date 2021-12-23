@@ -25,29 +25,29 @@ class Illust(JsonDict):
                      min_quality=20, sex_level=2) -> bool:
         '''检查质量是否合格'''
         if self.type != 'illust':
-            logging.info(f"ignore Illust({self.id}): type is {self.type}")
+            logging.debug(f"skip Illust({self.id}): type is {self.type}")
             return False
         if self.page_count > max_count:
-            logging.info(f"ignore Illust({self.id}): img_count is {self.page_count}")
+            logging.debug(f"skip Illust({self.id}): img_count is {self.page_count}")
             return False
         if self.total_bookmarks < min_bookmarks:
-            logging.info(f"ignore Illust({self.id}): bookmarks is {self.total_bookmarks}")
+            logging.debug(f"skip Illust({self.id}): bookmarks is {self.total_bookmarks}")
             return False
 
         if sex_level not in [1, 2, 3]:
             sex_level = 2
         if sex_level < 3 and self.x_restrict > 0:
-            logging.info(f"ignore Illust({self.id}): x_restrict={self.x_restrict}")
+            logging.debug(f"skip Illust({self.id}): x_restrict={self.x_restrict}")
             return False
         if sex_level == 2 and self.sanity_level > 4:
-            logging.info(f"ignore Illust({self.id}): sanity_level={self.sanity_level}")
+            logging.debug(f"skip Illust({self.id}): sanity_level={self.sanity_level}")
             return False
         if sex_level == 1 and self.sanity_level > 2:
-            logging.info(f"ignore Illust({self.id}): sanity_level={self.sanity_level}")
+            logging.debug(f"skip Illust({self.id}): sanity_level={self.sanity_level}")
             return False
 
         if min_quality and self.quality < min_quality:
-            logging.info(f"ignore Illust({self.id}): quality is {self.quality}")
+            logging.debug(f"skip Illust({self.id}): quality is {self.quality}")
             return False
 
         return True
