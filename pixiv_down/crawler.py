@@ -255,6 +255,7 @@ class Crawler:
 
     def ifetch(self, keep_json, max_count, min_bookmarks, min_quality=None, sex_level=2):
         def wrapper(pixiv_api, **kwargs):  # 仅接受 kwargs 形式的参数
+            il = None
             while True:
                 result = pixiv_api(**kwargs)
                 if not result or not result.illusts:
@@ -279,8 +280,14 @@ class Crawler:
                     logging.debug(f'request next page: {pixiv_api.__name__}({_kwargs})')
                     continue
                 else:
-                    # return the last one
-                    return il
+                    break
+
+            # return the last one
+            if il:
+                return il
+            else:
+                _kwargs = ut.params_to_str(kwargs=kwargs)
+                logging.warning(f'no illust found: {pixiv_api.__name__}({_kwargs})')
         return wrapper
 
     def download_illust(self, illust: dict, square=True, medium=False, large=False, origin=False):
