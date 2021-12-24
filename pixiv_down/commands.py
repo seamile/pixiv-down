@@ -9,9 +9,9 @@ import datetime
 from argparse import ArgumentParser
 from getpass import getpass
 from typing import List
+from pixiv_down import utils
 
 from pixiv_down.crawler import Crawler, Illust
-from pixiv_down.utils import print_json
 
 # parse args
 parser = ArgumentParser()
@@ -101,9 +101,9 @@ else:
 
 # parse show_json option
 if not args.show_json:
-    JSON_KEYS = []
+    JSON_FIELDS = []
 else:
-    JSON_KEYS = args.show_json.split(',')
+    JSON_FIELDS = args.show_json.split(',')
 
 # login
 crawler = Crawler(refresh_token=REFRESH_TOKEN, download_dir=DOWNLOAD_DIR)
@@ -137,8 +137,8 @@ def download_illusts_by_artist():
                 bk = illust.total_bookmarks / 1000
                 print(f'iid={illust.id}  bookmark={bk:.1f}k  q={illust.quality}  total={n_crawls}')
 
-                if JSON_KEYS:
-                    print_json(illust, keys=JSON_KEYS)
+                if JSON_FIELDS:
+                    utils.print_json(illust, keys=JSON_FIELDS)
                     print('-' * 50, end='\n\n')
 
                 if n_crawls >= args.illust_num:
@@ -156,7 +156,7 @@ def download_illusts_by_tag():
             print(f'scraping tag: {tag}')
             illusts: List[Illust] = []
             fetcher = crawler.ifetch_tag(tag, args.start, args.end,
-                                         args.keep_json, args.max_page_count,
+                                         False, args.max_page_count,
                                          args.min_bookmarks, args.min_quality,
                                          args.max_sex_level)
             for n_crawls, illust in enumerate(fetcher, start=1):
@@ -168,9 +168,14 @@ def download_illusts_by_tag():
                 bk = illust.total_bookmarks / 1000
                 print(f'iid={illust.id}  bookmark={bk:4.1f}k  total={n_crawls}')
 
-                if JSON_KEYS:
-                    print_json(illust, keys=JSON_KEYS)
+                if JSON_FIELDS:
+                    utils.print_json(illust, keys=JSON_FIELDS)
                     print('-' * 50, end='\n\n')
+
+            if args.keep_json:
+                for illust in illusts:
+                    jsonfile = crawler.dir_json_illust.joinpath(f'{illust.id}.json')
+                    utils.save_jsonfile(illust, jsonfile.as_posix())
 
             if args.resolution:
                 crawler.multi_download(illusts, **RESOLUTIONS)
@@ -187,8 +192,8 @@ def download_illusts_from_recommend():
         bk = illust.total_bookmarks / 1000
         print(f'iid={illust.id}  bookmark={bk:.1f}k  q={illust.quality}  total={n_crawls}')
 
-        if JSON_KEYS:
-            print_json(illust, keys=JSON_KEYS)
+        if JSON_FIELDS:
+            utils.print_json(illust, keys=JSON_FIELDS)
             print('-' * 50, end='\n\n')
 
         if n_crawls >= args.illust_num:
@@ -219,8 +224,8 @@ def download_illusts_by_related():
                 bk = illust.total_bookmarks / 1000
                 print(f'iid={illust.id}  bookmark={bk:.1f}k  q={illust.quality}  total={n_crawls}')
 
-                if JSON_KEYS:
-                    print_json(illust, keys=JSON_KEYS)
+                if JSON_FIELDS:
+                    utils.print_json(illust, keys=JSON_FIELDS)
                     print('-' * 50, end='\n\n')
 
                 if n_crawls >= args.illust_num:
@@ -249,8 +254,8 @@ def download_illusts_by_id():
                 bk = illust.total_bookmarks / 1000
                 print(f'iid={illust.id}  bookmark={bk:.1f}k  q={illust.quality}  progress: {n_crawls} / {total}')
 
-                if JSON_KEYS:
-                    print_json(illust, keys=JSON_KEYS)
+                if JSON_FIELDS:
+                    utils.print_json(illust, keys=JSON_FIELDS)
                     print('-' * 50, end='\n\n')
 
         if args.resolution:
@@ -290,8 +295,8 @@ def download_illust_from_ranking():
             bk = illust.total_bookmarks / 1000
             print(f'iid={illust.id}  bookmark={bk:.1f}k  q={illust.quality}  progress: {n_crawls}')
 
-            if JSON_KEYS:
-                print_json(illust, keys=JSON_KEYS)
+            if JSON_FIELDS:
+                utils.print_json(illust, keys=JSON_FIELDS)
                 print('-' * 50, end='\n\n')
 
         if args.resolution:

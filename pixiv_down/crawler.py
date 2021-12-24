@@ -254,7 +254,7 @@ class Crawler:
         return illust
 
     def ifetch(self, keep_json, max_count, min_bookmarks, min_quality=None, sex_level=2):
-        def wrapper(pixiv_api, **kwargs):  # 仅接受 kwargs 形式的参数
+        def api_caller(pixiv_api, **kwargs):  # 仅接受 kwargs 形式的参数
             il = None
             while True:
                 result = pixiv_api(**kwargs)
@@ -288,7 +288,7 @@ class Crawler:
             else:
                 _kwargs = ut.params_to_str(kwargs=kwargs)
                 logging.warning(f'no illust found: {pixiv_api.__name__}({_kwargs})')
-        return wrapper
+        return api_caller
 
     def download_illust(self, illust: dict, square=True, medium=False, large=False, origin=False):
         '''下载 illust 图片'''
@@ -515,8 +515,8 @@ class Crawler:
                               keep_json=False, max_count=10, min_bookmarks=3000,
                               min_quality=None, sex_level=2):
         '''迭代获取 artist 的 Illust'''
-        fetcher = self.ifetch(keep_json, max_count, min_bookmarks, min_quality, sex_level)
-        return fetcher(self.api.user_illusts, user_id=aid)
+        api_caller = self.ifetch(keep_json, max_count, min_bookmarks, min_quality, sex_level)
+        return api_caller(self.api.user_illusts, user_id=aid)
 
     def ifetch_tag(self, name, start: Optional[str] = None, end: Optional[str] = None,
                    keep_json=False, max_count=10, min_bookmarks=3000,
@@ -524,8 +524,8 @@ class Crawler:
         '''迭代获取 Tag 的 Illust'''
         if start and end:
             while start > end:  # type: ignore
-                func = self.ifetch(keep_json, max_count, min_bookmarks, min_quality, sex_level)
-                fetcher = func(self.api.search_illust, word=name, start_date=start, end_date=end)
+                api_caller = self.ifetch(keep_json, max_count, min_bookmarks, min_quality, sex_level)
+                fetcher = api_caller(self.api.search_illust, word=name, start_date=start, end_date=end)
 
                 try:
                     while True:
@@ -540,17 +540,17 @@ class Crawler:
                     else:
                         break
         else:
-            fetcher = self.ifetch(keep_json, max_count, min_bookmarks, min_quality, sex_level)
-            return fetcher(self.api.search_illust, word=name)
+            api_caller = self.ifetch(keep_json, max_count, min_bookmarks, min_quality, sex_level)
+            return api_caller(self.api.search_illust, word=name)
 
     def ifetch_recommend(self, keep_json=False, max_count=10, min_bookmarks=3000,
                          min_quality=None, sex_level=2):
         '''迭代获取推荐的 Illust'''
-        fetcher = self.ifetch(keep_json, max_count, min_bookmarks, min_quality, sex_level)
-        return fetcher(self.api.illust_recommended)
+        api_caller = self.ifetch(keep_json, max_count, min_bookmarks, min_quality, sex_level)
+        return api_caller(self.api.illust_recommended)
 
     def ifetch_related(self, iid, keep_json=False, max_count=10, min_bookmarks=3000,
                        min_quality=None, sex_level=2):
         '''迭代获取某作品关联的 Illust'''
-        fetcher = self.ifetch(keep_json, max_count, min_bookmarks, min_quality, sex_level)
-        return fetcher(self.api.illust_related, illust_id=iid)
+        api_caller = self.ifetch(keep_json, max_count, min_bookmarks, min_quality, sex_level)
+        return api_caller(self.api.illust_related, illust_id=iid)
