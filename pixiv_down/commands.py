@@ -249,6 +249,9 @@ def download_illusts_by_id():
                 print(e)
                 continue
             else:
+                if not illust:
+                    print(f'not found: id={iid}')
+                    continue
                 illusts.append(illust)
 
                 bk = illust.total_bookmarks / 1000

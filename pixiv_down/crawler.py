@@ -19,7 +19,10 @@ class Illust(JsonDict):
     @property
     def quality(self):
         '''质量'''
-        return round(self.total_bookmarks / self.total_view * 100, 2)
+        if self.visible and self.total_view and self.total_bookmarks:
+            return round(self.total_bookmarks / self.total_view * 100, 2)
+        else:
+            return 0
 
     def is_qualified(self, max_count=10, min_bookmarks=3000,
                      min_quality=20, sex_level=2) -> bool:
@@ -99,7 +102,7 @@ class Crawler:
                 lv2_dir = lv1_dir.joinpath(value)
                 lv2_dir.mkdir(0o755, parents=True, exist_ok=True)
 
-                # NOTE: 动态增加下载目录的属性，如：`dir_json_illust`
+                # NOTE: 动态增加下载目录的属性，如: `dir_json_illust`
                 setattr(self, f'dir_{key}_{value}', lv2_dir)
 
     def check_result(self, result):
