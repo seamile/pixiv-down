@@ -293,7 +293,7 @@ def download_illust_from_ranking():
             crawler.fetch_web_ranking(date, args.keep_json)
         else:
             illusts: List[Illust] = []
-            fetcher = crawler.ifetch_ranking(date, args.only_new, args.without_illust,
+            fetcher = crawler.ifetch_ranking(date, args.only_new,
                                              args.keep_json, args.max_page_count,
                                              args.min_bookmarks, args.min_quality,
                                              args.max_sex_level)
