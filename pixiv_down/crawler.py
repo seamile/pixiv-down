@@ -526,9 +526,11 @@ class Crawler:
                    min_quality=None, sex_level=2):
         '''迭代获取 Tag 的 Illust'''
         if start and end:
-            while start > end:  # type: ignore
+            while end > start:  # type: ignore
                 api_caller = self.ifetch(keep_json, max_count, min_bookmarks, min_quality, sex_level)
-                fetcher = api_caller(self.api.search_illust, word=name, start_date=start, end_date=end)
+                fetcher = api_caller(self.api.search_illust,
+                                     word=name, sort='date_desc',
+                                     start_date=start, end_date=end)
 
                 try:
                     while True:
@@ -538,8 +540,8 @@ class Crawler:
                     if e.value:
                         illust = e.value
                         last_date = datetime.datetime.fromisoformat(illust.create_date).date()
-                        start = (last_date - datetime.timedelta(1)).isoformat()
-                        logging.info(f'the illusts created before {start} have been checked')
+                        end = (last_date - datetime.timedelta(1)).isoformat()
+                        logging.info(f'the illusts created before {end} have been checked')
                     else:
                         break
         else:

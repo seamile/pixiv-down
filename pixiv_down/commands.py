@@ -58,14 +58,16 @@ parser.add_argument('-r', dest='resolution', type=str,
 
 # date interval
 today = datetime.date.today()
-parser.add_argument('-s', dest='start', type=str, default=today.isoformat(),
-                    help='The start date of illust when search tag (default: today)')
-parser.add_argument('-e', dest='end', type=str, default='2016-01-01',
-                    help='The end date of illust when search tag (default: `%(default)s`)')
+parser.add_argument('-s', dest='start', type=str, default='2016-01-01',
+                    help='The start date of illust for tag searching (default: `%(default)s`)')
+parser.add_argument('-e', dest='end', type=str, default=today.isoformat(),
+                    help='The end date of illust for tag searching (default: today)')
 
 # only download the newest illusts on ranking
 parser.add_argument('--only_new', action='store_true',
                     help='Only download the newest illusts from ranking')
+parser.add_argument('--without_illust', action='store_true',
+                    help="Don't download illusts when download ranking")
 
 # log level
 parser.add_argument('--log', dest='loglevel', type=str, default='warn',
@@ -287,23 +289,27 @@ def iget_days():
 
 def download_illust_from_ranking():
     for date in iget_days():
-        illusts: List[Illust] = []
-        fetcher = crawler.ifetch_ranking(date, args.only_new,
-                                         args.keep_json, args.max_page_count,
-                                         args.min_bookmarks, args.min_quality,
-                                         args.max_sex_level)
-        for n_crawls, illust in enumerate(fetcher, start=1):
-            illusts.append(illust)
+        if args.without_illust:
+            crawler.fetch_web_ranking(date, args.keep_json)
+        else:
+            illusts: List[Illust] = []
+            fetcher = crawler.ifetch_ranking(date, args.only_new, args.without_illust,
+                                             args.keep_json, args.max_page_count,
+                                             args.min_bookmarks, args.min_quality,
+                                             args.max_sex_level)
+            for n_crawls, illust in enumerate(fetcher, start=1):
+                illusts.append(illust)
 
-            bk = illust.total_bookmarks / 1000
-            print(f'iid={illust.id}  bookmark={bk:.1f}k  q={illust.quality}  progress: {n_crawls}')
+                bk = illust.total_bookmarks / 1000
+                print(f'iid={illust.id}  bookmark={bk:.1f}k  q={illust.quality}  progress: {n_crawls}')
 
-            if JSON_FIELDS:
-                utils.print_json(illust, keys=JSON_FIELDS)
-                print('-' * 50, end='\n\n')
+                if JSON_FIELDS:
+                    utils.print_json(illust, keys=JSON_FIELDS)
+                    print('-' * 50, end='\n\n')
 
-        if args.resolution:
-            crawler.multi_download(illusts, **RESOLUTIONS)
+            if args.resolution:
+                crawler.multi_download(illusts, **RESOLUTIONS)
+        print(f'Ranking {date} finished')
 
 
 def signal_hander(*_):
