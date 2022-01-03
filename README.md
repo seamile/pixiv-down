@@ -74,6 +74,15 @@ usage: pixd [-h]
 
     the max page count of illust (default: 10)
 
+- `-q MIN_QUALITY`
+
+    the min quality of illust, the quality eauals the num of bookmarks
+    per 100 views (default: None)
+
+- `-l {1,2,3}`
+
+    the max sex level of illust (default: 2)
+
 - `-n ILLUST_NUM`
 
     total number of illusts to download (default: 300)
@@ -92,17 +101,25 @@ usage: pixd [-h]
 
     keep the json result to files
 
+- `--show SHOW_JSON`
+
+    print the json result on stdout
+
 - `-s START`
 
-    the start date of illust when search tag (default: today)
+    the start date of illust for tag searching (default: `2016-01-01`)
 
 - `-e END`
 
-    the end date of illust when search tag (default: `2016-01-01`)
+    the end date of illust for tag searching (default: today)
 
 - `--only_new`
 
-    Only download the newest illusts from ranking
+    only download the newest illusts from ranking
+
+- `--without_illust`
+
+    don't download illusts when download ranking
 
 - `-l {debug,info,warn,error}`
 
