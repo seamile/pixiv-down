@@ -251,7 +251,7 @@ def download_illusts_by_id():
                 print(e)
                 continue
             else:
-                if not illust:
+                if not illust or not illust['visible']:
                     print(f'not found: id={iid}')
                     continue
                 illusts.append(illust)
