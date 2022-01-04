@@ -465,7 +465,7 @@ class Crawler:
         jsonfile: Path = self.dir_json_ranking.joinpath(f'{date:%Y%m%d}.json')  # type: ignore
         if jsonfile.exists():
             with jsonfile.open() as fp:
-                ranking = JsonDict(json.load(fp))
+                ranking = json.load(fp)
         else:
             ranking = []
             base_url = 'https://www.pixiv.net/ranking.php'

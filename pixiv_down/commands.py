@@ -50,7 +50,7 @@ parser.add_argument('-k', dest='keep_json', action='store_true',
                     help='Keep the json result to files')
 parser.add_argument('--show', dest='show_json', type=str,
                     help='Print the json result on stdout')
-parser.add_argument('-p', dest='path', type=str, default='./',
+parser.add_argument('-p', dest='path', type=str, default='./pixdown',
                     help='The storage path of illusts (default: %(default)s)')
 parser.add_argument('-r', dest='resolution', type=str,
                     help=('The resolution of illusts: s / m / l / o '
@@ -99,7 +99,7 @@ if not os.path.isdir(args.path):
     print(f'`{args.path}` is not a directory.')
     sys.exit(1)
 else:
-    DOWNLOAD_DIR = os.path.join(args.path, 'pixdown')
+    DOWNLOAD_DIR = args.path
 
 # parse show_json option
 if not args.show_json:
