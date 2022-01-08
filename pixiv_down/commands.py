@@ -95,7 +95,7 @@ if args.resolution:
 REFRESH_TOKEN = os.environ.get('PIXIV_TOKEN') or getpass('Please enter the refresh_token:')
 
 # check the download path
-if not os.path.isdir(args.path):
+if os.path.exists(args.path) and not os.path.isdir(args.path):
     print(f'`{args.path}` is not a directory.')
     sys.exit(1)
 else:

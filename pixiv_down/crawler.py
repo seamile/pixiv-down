@@ -538,8 +538,8 @@ class Crawler:
                         yield illust
                 except StopIteration as e:
                     if e.value:
-                        illust = e.value
-                        last_date = datetime.datetime.fromisoformat(illust.create_date).date()
+                        last_illust = e.value
+                        last_date = datetime.datetime.fromisoformat(last_illust.create_date).date()
                         end = (last_date - datetime.timedelta(1)).isoformat()
                         logging.info(f'the illusts created before {end} have been checked')
                     else:
