@@ -114,13 +114,12 @@ else:
     JSON_FIELDS = args.show_json.split(',')
 
 # parse ignore options
-SKIP_AIDS = args.skip_aids.split(',') if args.skip_aids else []
-SKIP_IIDS = args.skip_iids.split(',') if args.skip_iids else []
+SKIP_AIDS = [int(aid) for aid in args.skip_aids.split(',')] if args.skip_aids else []
+SKIP_IIDS = [int(iid) for iid in args.skip_iids.split(',')] if args.skip_iids else []
 
 # login
 crawler = Crawler(refresh_token=REFRESH_TOKEN, download_dir=DOWNLOAD_DIR)
 user = crawler.login()
-print('Login OK!\n')
 
 
 ################################################################################
