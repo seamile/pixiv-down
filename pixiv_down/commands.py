@@ -69,8 +69,14 @@ parser.add_argument('--only_new', action='store_true',
 parser.add_argument('--without_illust', action='store_true',
                     help="Don't download illusts when download ranking")
 
+# ignore options
+parser.add_argument('-A', dest='skip_aids', type=str,
+                    help='Ignore artist ids, separated by `,`')
+parser.add_argument('-I', dest='skip_iids', type=str,
+                    help='Ignore illust ids, separated by `,`')
+
 # log level
-parser.add_argument('--log', dest='loglevel', type=str, default='warn',
+parser.add_argument('--log', dest='loglevel', type=str, default='info',
                     choices=['debug', 'info', 'warn', 'error'],
                     help='The log level (default: `%(default)s`)')
 args = parser.parse_args()
@@ -107,6 +113,10 @@ if not args.show_json:
 else:
     JSON_FIELDS = args.show_json.split(',')
 
+# parse ignore options
+SKIP_AIDS = args.skip_aids.split(',') if args.skip_aids else []
+SKIP_IIDS = args.skip_iids.split(',') if args.skip_iids else []
+
 # login
 crawler = Crawler(refresh_token=REFRESH_TOKEN, download_dir=DOWNLOAD_DIR)
 user = crawler.login()
@@ -132,7 +142,7 @@ def download_illusts_by_artist():
             fetcher = crawler.ifetch_artist_artwork(aid,
                                                     args.keep_json, args.max_page_count,
                                                     args.min_bookmarks, args.min_quality,
-                                                    args.max_sex_level)
+                                                    args.max_sex_level, SKIP_IIDS)
             for n_crawls, illust in enumerate(fetcher, start=1):
                 illusts.append(illust)
 
@@ -160,7 +170,7 @@ def download_illusts_by_tag():
             fetcher = crawler.ifetch_tag(tag, args.start, args.end,
                                          False, args.max_page_count,
                                          args.min_bookmarks, args.min_quality,
-                                         args.max_sex_level)
+                                         args.max_sex_level, SKIP_AIDS, SKIP_IIDS)
             for n_crawls, illust in enumerate(fetcher, start=1):
                 if len(illusts) < args.illust_num:
                     heapq.heappush(illusts, illust)
@@ -187,7 +197,7 @@ def download_illusts_from_recommend():
     illusts: List[Illust] = []
     fetcher = crawler.ifetch_recommend(args.keep_json, args.max_page_count,
                                        args.min_bookmarks, args.min_quality,
-                                       args.max_sex_level)
+                                       args.max_sex_level, SKIP_AIDS, SKIP_IIDS)
     for n_crawls, illust in enumerate(fetcher, start=1):
         illusts.append(illust)
 
@@ -219,7 +229,7 @@ def download_illusts_by_related():
 
             fetcher = crawler.ifetch_related(iid, args.keep_json, args.max_page_count,
                                              args.min_bookmarks, args.min_quality,
-                                             args.max_sex_level)
+                                             args.max_sex_level, SKIP_AIDS, SKIP_IIDS)
             for n_crawls, illust in enumerate(fetcher, start=1):
                 illusts.append(illust)
 
@@ -296,7 +306,7 @@ def download_illust_from_ranking():
             fetcher = crawler.ifetch_ranking(date, args.only_new,
                                              args.keep_json, args.max_page_count,
                                              args.min_bookmarks, args.min_quality,
-                                             args.max_sex_level)
+                                             args.max_sex_level, SKIP_AIDS, SKIP_IIDS)
             for n_crawls, illust in enumerate(fetcher, start=1):
                 illusts.append(illust)
 
