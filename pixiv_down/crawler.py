@@ -3,14 +3,35 @@ import json
 import logging
 import random
 import time
+from functools import wraps
 from pathlib import Path
-from typing import Optional
+from typing import Iterable, Optional
 
 import requests
 from pixivpy3.aapi import AppPixivAPI
 from pixivpy3.utils import JsonDict
 
 from pixiv_down import utils as ut
+
+
+class IllustFilter:
+    def __init__(self,
+                 max_count: int = 10,
+                 min_bookmarks: int = 1000,
+                 min_quality: Optional[float] = None,
+                 sex_level: int = 2,
+                 skip_aids: Iterable[int] = (),
+                 skip_iids: Iterable[int] = ()):
+        self.max_count = max_count
+        self.min_bookmarks = min_bookmarks
+        self.min_quality = min_quality
+        self.sex_level = sex_level
+        self.skip_aids = skip_aids
+        self.skip_iids = skip_iids
+
+
+class User(JsonDict):
+    pass
 
 
 class Illust(JsonDict):
@@ -24,35 +45,36 @@ class Illust(JsonDict):
         else:
             return 0
 
-    def is_qualified(self, max_count=10, min_bookmarks=3000, min_quality=20,
-                     sex_level=2, skip_aids=(), skip_iids=()) -> bool:
+    def is_qualified(self, ifilter: IllustFilter) -> bool:
         '''检查质量是否合格'''
         if self.type != 'illust':
             logging.debug(f"skip Illust({self.id}): type is {self.type}")
             return False
-        if self.page_count > max_count:
+        if self.page_count > ifilter.max_count:
             logging.debug(f"skip Illust({self.id}): img_count is {self.page_count}")
             return False
-        if self.total_bookmarks < min_bookmarks:
+        if self.total_bookmarks < ifilter.min_bookmarks:
             logging.debug(f"skip Illust({self.id}): bookmarks is {self.total_bookmarks}")
             return False
-        if min_quality and self.quality < min_quality:
+        if ifilter.min_quality and self.quality < ifilter.min_quality:
             logging.debug(f"skip Illust({self.id}): quality is {self.quality}")
             return False
 
-        if sex_level not in [1, 2, 3]:
-            sex_level = 2
-        if sex_level < 3 and self.x_restrict > 0:
+        # 检查 sex_level 范围
+        if ifilter.sex_level not in [1, 2, 3]:
+            ifilter.sex_level = 2
+        # 过滤 sex_level
+        if ifilter.sex_level < 3 and self.x_restrict > 0:
             logging.debug(f"skip Illust({self.id}): x_restrict={self.x_restrict}")
             return False
-        if sex_level == 2 and self.sanity_level > 4:
+        if ifilter.sex_level == 2 and self.sanity_level > 4:
             logging.debug(f"skip Illust({self.id}): sanity_level={self.sanity_level}")
             return False
-        if sex_level == 1 and self.sanity_level > 2:
+        if ifilter.sex_level == 1 and self.sanity_level > 2:
             logging.debug(f"skip Illust({self.id}): sanity_level={self.sanity_level}")
             return False
 
-        if self.user.id in skip_aids or self.id in skip_iids:
+        if self.user.id in ifilter.skip_aids or self.id in ifilter.skip_iids:
             logging.debug(f"skip Illust({self.id}): skip aid or iid")
             return False
 
@@ -79,17 +101,26 @@ class Crawler:
                  username: Optional[str] = None,
                  password: Optional[str] = None,
                  refresh_token: Optional[str] = None,
-                 download_dir: Optional[str] = None):
+                 download_dir: Optional[str] = None,
+                 ifilter: IllustFilter = IllustFilter()):
 
         self.username = username
         self.password = password
         self.refresh_token = refresh_token
         self.base_dir = Path(download_dir or '').absolute()
         self.make_download_dirs()
+        self.ifilter = ifilter
 
         self.api = AppPixivAPI()
         self.api.set_accept_language('zh-cn')
         self.decorate_apis_with_retry()
+
+    @property
+    def user(self) -> User:
+        if not hasattr(self, '_user'):
+            result = self.login()
+            self._user = User(result['user'])
+        return self._user
 
     def make_download_dirs(self):
         dir_tree = {
@@ -177,7 +208,6 @@ class Crawler:
 
         logging.debug(f'access_token="{self.api.access_token}" '
                       f'refresh_token="{self.api.refresh_token}"')
-
         return result
 
     def fetch_illust(self, iid: int, keep_json=False):
@@ -259,9 +289,10 @@ class Crawler:
 
         return illust
 
-    def ifetch(self, keep_json, max_count, min_bookmarks, min_quality=None,
-               sex_level=2, skip_aids=(), skip_iids=()):
-        def api_caller(pixiv_api, **kwargs):  # 仅接受 kwargs 形式的参数
+    def ifetch(self, pixiv_api, keep_json=False):
+        '''NOTE: 特别注意，此函数并非普通装饰器，需手动调用'''
+        @wraps(pixiv_api)
+        def api_caller(**kwargs):  # 仅接受 kwargs 形式的参数
             il = None
             while True:
                 result = pixiv_api(**kwargs)
@@ -271,8 +302,7 @@ class Crawler:
                 for il in result.illusts:
                     il = Illust(il)
 
-                    if il.is_qualified(max_count, min_bookmarks, min_quality,
-                                       sex_level, skip_aids, skip_iids):
+                    if il.is_qualified(self.ifilter):
                         logging.debug(f'fetched Illust({il.id}) '
                                       f'created={il.create_date[:10]} '
                                       f'bookmark={il.total_bookmarks}')
@@ -497,9 +527,7 @@ class Crawler:
 
         return ranking
 
-    def ifetch_ranking(self, date, only_new=True,
-                       keep_json=False, max_count=10, min_bookmarks=3000,
-                       min_quality=None, sex_level=2, skip_aids=(), skip_iids=()):
+    def ifetch_ranking(self, date, only_new=True, keep_json=True):
         web_ranking = self.fetch_web_ranking(date, keep_json)
         for il in web_ranking:
             # 检查是否只下载当天的数据
@@ -508,8 +536,7 @@ class Crawler:
 
             # 获取 Illust 详细数据
             illust = self.fetch_illust(il['illust_id'], False)
-            if illust and illust.is_qualified(max_count, min_bookmarks, min_quality,
-                                              sex_level, skip_aids, skip_iids):
+            if illust and illust.is_qualified(self.ifilter):
                 # 检查是否需要保存 json
                 if keep_json:
                     jsonfile = self.dir_json_illust.joinpath(f'{illust.id}.json')
@@ -521,32 +548,28 @@ class Crawler:
                 yield illust
             time.sleep(random.random() + random.randint(1, 3))
 
-    def ifetch_artist_artwork(self, aid,
-                              keep_json=False, max_count=10, min_bookmarks=3000,
-                              min_quality=None, sex_level=2, skip_iids=()):
+    def ifetch_artist_artwork(self, aid, keep_json=False):
         '''迭代获取 artist 的 Illust'''
-        api_caller = self.ifetch(keep_json, max_count, min_bookmarks, min_quality,
-                                 sex_level, (), skip_iids)
-        return api_caller(self.api.user_illusts, user_id=aid)
+        user_illusts_api = self.ifetch(self.api.user_illusts, keep_json)
+        return user_illusts_api(user_id=aid)
 
-    def ifetch_tag(self, name, start: Optional[str] = None, end: Optional[str] = None,
-                   keep_json=False, max_count=10, min_bookmarks=3000,
-                   min_quality=None, sex_level=2, skip_aids=(), skip_iids=()):
+    def ifetch_tag(self, word, start: Optional[str] = None, end: Optional[str] = None,
+                   keep_json=False):
         '''迭代获取 Tag 的 Illust'''
+        sort_mode = 'popular_desc' if self.user.is_premium else 'date_desc'
+        search_illust_api = self.ifetch(self.api.search_illust, keep_json)
+
         if start and end:
-            while end > start:  # type: ignore
-                api_caller = self.ifetch(keep_json, max_count, min_bookmarks, min_quality,
-                                         sex_level, skip_aids, skip_iids)
-                fetcher = api_caller(self.api.search_illust,
-                                     word=name, sort='date_desc',
-                                     start_date=start, end_date=end)
+            while end > start:
+                fetcher = search_illust_api(word=word, sort=sort_mode,
+                                            start_date=start, end_date=end)
 
                 try:
                     while True:
                         illust = next(fetcher)
                         yield illust
                 except StopIteration as e:
-                    if e.value:
+                    if sort_mode == 'date_desc' and e.value:
                         last_illust = e.value
                         last_date = datetime.datetime.fromisoformat(last_illust.create_date).date()
                         end = (last_date - datetime.timedelta(1)).isoformat()
@@ -554,19 +577,14 @@ class Crawler:
                     else:
                         break
         else:
-            api_caller = self.ifetch(keep_json, max_count, min_bookmarks, min_quality, sex_level)
-            return api_caller(self.api.search_illust, word=name)
+            return search_illust_api(word=word, sort=sort_mode)
 
-    def ifetch_recommend(self, keep_json=False, max_count=10, min_bookmarks=3000,
-                         min_quality=None, sex_level=2, skip_aids=(), skip_iids=()):
+    def ifetch_recommend(self, keep_json):
         '''迭代获取推荐的 Illust'''
-        api_caller = self.ifetch(keep_json, max_count, min_bookmarks, min_quality,
-                                 sex_level, skip_aids, skip_iids)
-        return api_caller(self.api.illust_recommended)
+        illust_recommended_api = self.ifetch(self.api.illust_recommended, keep_json)
+        return illust_recommended_api()
 
-    def ifetch_related(self, iid, keep_json=False, max_count=10, min_bookmarks=3000,
-                       min_quality=None, sex_level=2, skip_aids=(), skip_iids=()):
+    def ifetch_related(self, iid, keep_json):
         '''迭代获取某作品关联的 Illust'''
-        api_caller = self.ifetch(keep_json, max_count, min_bookmarks, min_quality,
-                                 sex_level, skip_aids, skip_iids)
-        return api_caller(self.api.illust_related, illust_id=iid)
+        illust_related_api = self.ifetch(self.api.illust_related, keep_json)
+        return illust_related_api(illust_id=iid)

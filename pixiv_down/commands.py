@@ -11,7 +11,7 @@ from getpass import getpass
 from typing import List
 from pixiv_down import utils
 
-from pixiv_down.crawler import Crawler, Illust
+from pixiv_down.crawler import Crawler, Illust, IllustFilter
 
 # parse args
 parser = ArgumentParser()
@@ -32,7 +32,7 @@ parser.add_argument(dest='args', nargs='*',
                           "e.g., `illust ids` / `artist ids` / `tag names`"))
 
 # bookmars and page count
-parser.add_argument('-b', dest='min_bookmarks', default=3000, type=int,
+parser.add_argument('-b', dest='min_bookmarks', default=1000, type=int,
                     help='The min bookmarks of illust (default: %(default)s)')
 parser.add_argument('-c', dest='max_page_count', default=10, type=int,
                     help='The max page count of illust (default: %(default)s)')
@@ -42,7 +42,7 @@ parser.add_argument('-q', dest='min_quality', type=int,
                           '(default: %(default)s)'))
 parser.add_argument('-l', dest='max_sex_level', choices=[1, 2, 3], default=2, type=int,
                     help='The max sex level of illust (default: %(default)s)')
-parser.add_argument('-n', dest='illust_num', default=300, type=int,
+parser.add_argument('-n', dest='illust_num', default=500, type=int,
                     help='Total number of illusts to download (default: %(default)s)')
 
 # download options
@@ -52,7 +52,7 @@ parser.add_argument('--show', dest='show_json', type=str,
                     help='Print the json result on stdout')
 parser.add_argument('-p', dest='path', type=str, default='./pixdown',
                     help='The storage path of illusts (default: %(default)s)')
-parser.add_argument('-r', dest='resolution', type=str,
+parser.add_argument('-r', dest='resolution', type=str, default='o',
                     help=('The resolution of illusts: s / m / l / o '
                           '(i.e., square / middle / large / origin, can set multiple)'))
 
@@ -118,7 +118,9 @@ SKIP_AIDS = [int(aid) for aid in args.skip_aids.split(',')] if args.skip_aids el
 SKIP_IIDS = [int(iid) for iid in args.skip_iids.split(',')] if args.skip_iids else []
 
 # login
-crawler = Crawler(refresh_token=REFRESH_TOKEN, download_dir=DOWNLOAD_DIR)
+ifilter = IllustFilter(args.max_page_count, args.min_bookmarks, args.min_quality,
+                       args.max_sex_level, SKIP_AIDS, SKIP_IIDS)
+crawler = Crawler(refresh_token=REFRESH_TOKEN, download_dir=DOWNLOAD_DIR, ifilter=ifilter)
 user = crawler.login()
 
 
@@ -138,10 +140,7 @@ def download_illusts_by_artist():
                 continue
 
             illusts: List[Illust] = []
-            fetcher = crawler.ifetch_artist_artwork(aid,
-                                                    args.keep_json, args.max_page_count,
-                                                    args.min_bookmarks, args.min_quality,
-                                                    args.max_sex_level, SKIP_IIDS)
+            fetcher = crawler.ifetch_artist_artwork(aid, args.keep_json)
             for n_crawls, illust in enumerate(fetcher, start=1):
                 illusts.append(illust)
 
@@ -166,10 +165,7 @@ def download_illusts_by_tag():
         for tag in args.args:
             print(f'scraping tag: {tag}')
             illusts: List[Illust] = []
-            fetcher = crawler.ifetch_tag(tag, args.start, args.end,
-                                         False, args.max_page_count,
-                                         args.min_bookmarks, args.min_quality,
-                                         args.max_sex_level, SKIP_AIDS, SKIP_IIDS)
+            fetcher = crawler.ifetch_tag(tag, args.start, args.end, False)
             for n_crawls, illust in enumerate(fetcher, start=1):
                 if len(illusts) < args.illust_num:
                     heapq.heappush(illusts, illust)
@@ -194,9 +190,7 @@ def download_illusts_by_tag():
 
 def download_illusts_from_recommend():
     illusts: List[Illust] = []
-    fetcher = crawler.ifetch_recommend(args.keep_json, args.max_page_count,
-                                       args.min_bookmarks, args.min_quality,
-                                       args.max_sex_level, SKIP_AIDS, SKIP_IIDS)
+    fetcher = crawler.ifetch_recommend(args.keep_json)
     for n_crawls, illust in enumerate(fetcher, start=1):
         illusts.append(illust)
 
@@ -226,9 +220,7 @@ def download_illusts_by_related():
                 print(f'wrong illust id: {iid}')
                 continue
 
-            fetcher = crawler.ifetch_related(iid, args.keep_json, args.max_page_count,
-                                             args.min_bookmarks, args.min_quality,
-                                             args.max_sex_level, SKIP_AIDS, SKIP_IIDS)
+            fetcher = crawler.ifetch_related(iid, args.keep_json)
             for n_crawls, illust in enumerate(fetcher, start=1):
                 illusts.append(illust)
 
@@ -302,10 +294,7 @@ def download_illust_from_ranking():
             crawler.fetch_web_ranking(date, args.keep_json)
         else:
             illusts: List[Illust] = []
-            fetcher = crawler.ifetch_ranking(date, args.only_new,
-                                             args.keep_json, args.max_page_count,
-                                             args.min_bookmarks, args.min_quality,
-                                             args.max_sex_level, SKIP_AIDS, SKIP_IIDS)
+            fetcher = crawler.ifetch_ranking(date, args.only_new, args.keep_json)
             for n_crawls, illust in enumerate(fetcher, start=1):
                 illusts.append(illust)
 
