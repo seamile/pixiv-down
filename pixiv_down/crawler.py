@@ -122,6 +122,10 @@ class Crawler:
             self._user = User(result['user'])
         return self._user
 
+    @user.setter
+    def user(self, user: User):
+        self._user = user
+
     def make_download_dirs(self):
         dir_tree = {
             'json': ['illust', 'user', 'ranking'],
@@ -205,6 +209,8 @@ class Crawler:
         else:
             logging.info('login by password')
             result = self.api.login(self.username, self.password)
+
+        self.user = User(result['user'])
 
         logging.debug(f'access_token="{self.api.access_token}" '
                       f'refresh_token="{self.api.refresh_token}"')
