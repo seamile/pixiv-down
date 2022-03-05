@@ -167,20 +167,27 @@ def download_illusts_by_tag():
             illusts: List[Illust] = []
             fetcher = crawler.ifetch_tag(tag, args.start, args.end, False)
             for n_crawls, illust in enumerate(fetcher, start=1):
-                if len(illusts) < args.illust_num:
-                    heapq.heappush(illusts, illust)
+                if crawler.user.is_premium:
+                    # 用户时会员时，按 popular_desc 排序，直接存放即可
+                    if n_crawls <= args.illust_num:
+                        illusts.append(illust)
+                    else:
+                        break
                 else:
-                    heapq.heappushpop(illusts, illust)
+                    if len(illusts) < args.illust_num:
+                        heapq.heappush(illusts, illust)
+                    else:
+                        heapq.heappushpop(illusts, illust)
 
                 bk = illust.total_bookmarks / 1000
                 print(f'iid={illust.id}  bookmark={bk:4.1f}k  total={n_crawls}')
 
+            for illust in illusts:
                 if JSON_FIELDS:
                     utils.print_json(illust, keys=JSON_FIELDS)
                     print('-' * 50, end='\n\n')
 
-            if args.keep_json:
-                for illust in illusts:
+                if args.keep_json:
                     jsonfile = crawler.dir_json_illust.joinpath(f'{illust.id}.json')
                     utils.save_jsonfile(illust, jsonfile.as_posix())
 

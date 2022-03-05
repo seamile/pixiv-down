@@ -562,20 +562,17 @@ class Crawler:
     def ifetch_tag(self, word, start: Optional[str] = None, end: Optional[str] = None,
                    keep_json=False):
         '''迭代获取 Tag 的 Illust'''
-        sort_mode = 'popular_desc' if self.user.is_premium else 'date_desc'
         search_illust_api = self.ifetch(self.api.search_illust, keep_json)
 
-        if start and end:
+        if self.user.is_premium:
+            yield from search_illust_api(word=word, sort='popular_desc')
+        elif start and end:
             while end > start:
-                fetcher = search_illust_api(word=word, sort=sort_mode,
-                                            start_date=start, end_date=end)
-
                 try:
-                    while True:
-                        illust = next(fetcher)
-                        yield illust
+                    yield from search_illust_api(word=word, sort='date_desc',
+                                                 start_date=start, end_date=end)
                 except StopIteration as e:
-                    if sort_mode == 'date_desc' and e.value:
+                    if e.value:
                         last_illust = e.value
                         last_date = datetime.datetime.fromisoformat(last_illust.create_date).date()
                         end = (last_date - datetime.timedelta(1)).isoformat()
@@ -583,7 +580,7 @@ class Crawler:
                     else:
                         break
         else:
-            return search_illust_api(word=word, sort=sort_mode)
+            raise ValueError('user is not premium, and both start and end are None')
 
     def ifetch_recommend(self, keep_json):
         '''迭代获取推荐的 Illust'''
