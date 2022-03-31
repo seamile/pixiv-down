@@ -4,6 +4,7 @@ import os
 import sys
 import heapq
 import signal
+import time
 import logging
 import datetime
 from argparse import ArgumentParser
@@ -271,8 +272,10 @@ def download_illusts_by_id():
                     utils.print_json(illust, keys=JSON_FIELDS)
                     print('-' * 50, end='\n\n')
 
-        if args.resolution:
-            crawler.multi_download(illusts, **RESOLUTIONS)
+                if args.resolution:
+                    crawler.download_illust(illust, **RESOLUTIONS)
+            if total > 100 and n_crawls % 100 == 0:
+                time.sleep(5)
 
 
 def iget_days():
