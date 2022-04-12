@@ -68,7 +68,7 @@ parser.add_argument('-e', dest='end', type=str, default=today.isoformat(),
 parser.add_argument('--only_new', action='store_true',
                     help='Only download the newest illusts from ranking')
 parser.add_argument('--without_illust', action='store_true',
-                    help="Don't download illusts when download ranking")
+                    help="Don't download illusts")
 
 # ignore options
 parser.add_argument('-A', dest='skip_aids', type=str,
@@ -93,10 +93,12 @@ loglevel = getattr(logging, args.loglevel.upper())
 logging.root.setLevel(loglevel)
 
 # parse illust resolution
-if args.resolution:
+if args.resolution and not args.without_illust:
     _img_types = {'s': 'square', 'm': 'medium', 'l': 'large', 'o': 'origin'}
     RESOLUTIONS = {v: True if k in args.resolution else False
                    for k, v in _img_types.items()}
+else:
+    RESOLUTIONS = {}
 
 # get the refresh_token
 REFRESH_TOKEN = os.environ.get('PIXIV_TOKEN') or getpass('Please enter the refresh_token:')
