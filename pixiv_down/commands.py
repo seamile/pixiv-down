@@ -56,6 +56,8 @@ parser.add_argument('-p', dest='path', type=str, default='./pixdown',
 parser.add_argument('-r', dest='resolution', type=str, default='o',
                     help=('The resolution of illusts: s / m / l / o '
                           '(i.e., square / middle / large / origin, can set multiple)'))
+parser.add_argument('--without_illust', action='store_true',
+                    help="Don't download illusts")
 
 # date interval
 today = datetime.date.today()
@@ -67,8 +69,6 @@ parser.add_argument('-e', dest='end', type=str, default=today.isoformat(),
 # only download the newest illusts on ranking
 parser.add_argument('--only_new', action='store_true',
                     help='Only download the newest illusts from ranking')
-parser.add_argument('--without_illust', action='store_true',
-                    help="Don't download illusts")
 
 # ignore options
 parser.add_argument('-A', dest='skip_aids', type=str,
@@ -93,12 +93,12 @@ loglevel = getattr(logging, args.loglevel.upper())
 logging.root.setLevel(loglevel)
 
 # parse illust resolution
-if args.resolution and not args.without_illust:
+if args.without_illust:
+    RESOLUTIONS = {'square': False, 'medium': False, 'large': False, 'origin': False}
+else:
     _img_types = {'s': 'square', 'm': 'medium', 'l': 'large', 'o': 'origin'}
     RESOLUTIONS = {v: True if k in args.resolution else False
                    for k, v in _img_types.items()}
-else:
-    RESOLUTIONS = {}
 
 # get the refresh_token
 REFRESH_TOKEN = os.environ.get('PIXIV_TOKEN') or getpass('Please enter the refresh_token:')
