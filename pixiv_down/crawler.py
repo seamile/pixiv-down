@@ -40,13 +40,19 @@ class Illust(JsonDict):
     @property
     def quality(self):
         '''质量'''
-        if self.visible and self.total_view and self.total_bookmarks:
-            return round(self.total_bookmarks / self.total_view * 100, 2)
-        else:
+        if not self.visible:
+            return -1
+        elif not self.total_view:
             return 0
+        else:
+            return round(self.total_bookmarks / self.total_view * 100, 2)
 
     def is_qualified(self, ifilter: IllustFilter) -> bool:
         '''检查质量是否合格'''
+        if not self.visible:
+            logging.debug(f"skip Illust({self.id}): visible is {self.visible}")
+            return False
+
         if self.type != 'illust':
             logging.debug(f"skip Illust({self.id}): type is {self.type}")
             return False
@@ -290,7 +296,7 @@ class Crawler:
                 return
             illust = Illust(result['illust'])
 
-            if keep_json:
+            if keep_json and illust['visible']:
                 ut.save_jsonfile(illust, filename=jsonfile.as_posix())
 
         return illust
