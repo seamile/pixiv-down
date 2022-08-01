@@ -135,7 +135,8 @@ def download_illusts_by_artist():
     if not args.args:
         logging.error('not specified the illust id list')
     else:
-        for aid in args.args:
+        aids = set(args.args)
+        for aid in aids:
             try:
                 aid = int(aid)
             except (TypeError, ValueError):
@@ -165,7 +166,8 @@ def download_illusts_by_tag():
     if not args.args:
         logging.error('not specified the tag name')
     else:
-        for tag in args.args:
+        tags = set(args.args)
+        for tag in tags:
             print(f'scraping tag: {tag}')
             illusts: List[Illust] = []
             fetcher = crawler.ifetch_tag(tag, args.start, args.end, False)
@@ -222,7 +224,8 @@ def download_illusts_by_related():
     if not args.args:
         logging.error('not specified the related illust id')
     else:
-        for iid in args.args:
+        iids = set(args.args)
+        for iid in iids:
             illusts: List[Illust] = []
             try:
                 iid = int(iid)
@@ -252,9 +255,10 @@ def download_illusts_by_id():
     if not args.args:
         logging.error('not specified the illust id list')
     else:
-        total = len(args.args)
+        iids = set(args.args)
+        total = len(iids)
         illusts: List[Illust] = []
-        for n_crawls, iid in enumerate(args.args, start=1):
+        for n_crawls, iid in enumerate(iids, start=1):
             try:
                 iid = int(iid)
                 illust = crawler.fetch_illust(iid, args.keep_json)
